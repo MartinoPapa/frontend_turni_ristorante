@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Scheduler Frontend</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; }
+  textarea { width: 100%; height: 120px; margin-bottom: 10px; font-family: monospace; }
+  button { padding: 10px 20px; font-size: 16px; }
+  pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<h1>Scheduler Ristorante</h1>
+
+<h3>Workers (JSON array)</h3>
+<textarea id="workers">["Alice","Bob","Carol"]</textarea>
+
+<h3>Shifts (JSON array)</h3>
+<textarea id="shifts">["MonLunch","MonDinner","TueLunch"]</textarea>
+
+<h3>Hours per shift H (JSON object)</h3>
+<textarea id="H">{"MonLunch":6,"MonDinner":8,"TueLunch":4}</textarea>
+
+<h3>Max hours per worker M (JSON object)</h3>
+<textarea id="M">{"Alice":8,"Bob":8,"Carol":6}</textarea>
+
+<h3>Availability (JSON object, keys "Worker,Shift")</h3>
+<textarea id="avail">
+{
+  "Alice,MonLunch":1,
+  "Alice,MonDinner":1,
+  "Alice,TueLunch":0,
+  "Bob,MonLunch":1,
+  "Bob,MonDinner":0,
+  "Bob,TueLunch":1,
+  "Carol,MonLunch":0,
+  "Carol,MonDinner":1,
+  "Carol,TueLunch":1
+}
+</textarea>
+
+<h3>Forbidden pairs (JSON array of arrays)</h3>
+<textarea id="forbidden_pairs">[["MonLunch","MonDinner"]]</textarea>
+
+<button onclick="getSchedule()">Genera Schedule</button>
+
+<h3>Output</h3>
+<pre id="output"></pre>
+
+<script>
+async function getSchedule() {
+  try {
+    // Recupera e parse dei valori dai textarea
+    const workers = JSON.parse(document.getElementById("workers").value);
+    const shifts = JSON.parse(document.getElementById("shifts").value);
+    const H = JSON.parse(document.getElementById("H").value);
+    const M = JSON.parse(document.getElementById("M").value);
+    const avail = JSON.parse(document.getElementById("avail").value);
+    const forbidden_pairs = JSON.parse(document.getElementById("forbidden_pairs").value);
+
+    const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({workers, shifts, H, M, avail, forbidden_pairs})
+    });
+
+    const data = await response.json();
+    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+
+  } catch (err) {
+    document.getElementById("output").textContent = "Errore: " + err.message;
+  }
+}
+</script>
+</body>
+</html>
