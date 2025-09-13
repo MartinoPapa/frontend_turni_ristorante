@@ -2,46 +2,46 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>Scheduler Frontend</title>
+<title>Scheduler Ristorante</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; }
-  textarea { width: 100%; height: 120px; margin-bottom: 10px; font-family: monospace; }
-  button { padding: 10px 20px; font-size: 16px; }
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+  h1, h2, h3 { color: #333; }
+  .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
+  label { display: block; margin: 5px 0 2px; font-weight: bold; }
+  input, select { padding: 5px; margin-bottom: 10px; width: 100%; max-width: 300px; }
+  table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+  table td, table th { border: 1px solid #ccc; padding: 5px; text-align: center; }
+  button { padding: 10px 20px; margin-top: 10px; }
   pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
 </style>
 </head>
 <body>
 <h1>Scheduler Ristorante</h1>
 
-<h3>Workers (JSON array)</h3>
-<textarea id="workers">["Alice","Bob","Carol"]</textarea>
+<div class="section">
+  <h2>1. Lavoratori</h2>
+  <div id="workers-list"></div>
+  <button onclick="addWorker()">+ Aggiungi lavoratore</button>
+</div>
 
-<h3>Shifts (JSON array)</h3>
-<textarea id="shifts">["MonLunch","MonDinner","TueLunch"]</textarea>
+<div class="section">
+  <h2>2. Turni</h2>
+  <div id="shifts-list"></div>
+  <button onclick="addShift()">+ Aggiungi turno</button>
+</div>
 
-<h3>Hours per shift H (JSON object)</h3>
-<textarea id="H">{"MonLunch":6,"MonDinner":8,"TueLunch":4}</textarea>
+<div class="section">
+  <h2>3. Disponibilità</h2>
+  <p>Seleziona chi può fare ciascun turno:</p>
+  <div id="availability-table"></div>
+</div>
 
-<h3>Max hours per worker M (JSON object)</h3>
-<textarea id="M">{"Alice":8,"Bob":8,"Carol":6}</textarea>
-
-<h3>Availability (JSON object, keys "Worker,Shift")</h3>
-<textarea id="avail">
-{
-  "Alice,MonLunch":1,
-  "Alice,MonDinner":1,
-  "Alice,TueLunch":0,
-  "Bob,MonLunch":1,
-  "Bob,MonDinner":0,
-  "Bob,TueLunch":1,
-  "Carol,MonLunch":0,
-  "Carol,MonDinner":1,
-  "Carol,TueLunch":1
-}
-</textarea>
-
-<h3>Forbidden pairs (JSON array of arrays)</h3>
-<textarea id="forbidden_pairs">[["MonLunch","MonDinner"]]</textarea>
+<div class="section">
+  <h2>4. Coppie vietate</h2>
+  <p>Seleziona turni che non possono essere assegnati allo stesso lavoratore:</p>
+  <div id="forbidden-list"></div>
+  <button onclick="addForbiddenPair()">+ Aggiungi coppia vietata</button>
+</div>
 
 <button onclick="getSchedule()">Genera Schedule</button>
 
@@ -49,25 +49,95 @@
 <pre id="output"></pre>
 
 <script>
-async function getSchedule() {
-  try {
-    // Recupera e parse dei valori dai textarea
-    const workers = JSON.parse(document.getElementById("workers").value);
-    const shifts = JSON.parse(document.getElementById("shifts").value);
-    const H = JSON.parse(document.getElementById("H").value);
-    const M = JSON.parse(document.getElementById("M").value);
-    const avail = JSON.parse(document.getElementById("avail").value);
-    const forbidden_pairs = JSON.parse(document.getElementById("forbidden_pairs").value);
+let workers = [];
+let shifts = [];
+let forbiddenPairs = [];
 
+function addWorker() {
+  const name = prompt("Nome lavoratore:");
+  if (!name) return;
+  const maxHours = prompt("Ore massime lavorabili:", "8");
+  workers.push({name, maxHours: parseInt(maxHours)});
+  renderWorkers();
+  renderAvailability();
+}
+
+function addShift() {
+  const name = prompt("Nome turno (es. LunPranzo):");
+  if (!name) return;
+  const hours = prompt("Ore richieste per il turno:", "6");
+  shifts.push({name, hours: parseInt(hours)});
+  renderShifts();
+  renderAvailability();
+}
+
+function renderWorkers() {
+  const container = document.getElementById("workers-list");
+  container.innerHTML = workers.map(w => `<div>${w.name} (max ${w.maxHours}h)</div>`).join("");
+}
+
+function renderShifts() {
+  const container = document.getElementById("shifts-list");
+  container.innerHTML = shifts.map(s => `<div>${s.name} (${s.hours}h)</div>`).join("");
+}
+
+function renderAvailability() {
+  if (workers.length === 0 || shifts.length === 0) return;
+  let html = "<table><tr><th>Lavoratore</th>";
+  shifts.forEach(s => html += `<th>${s.name}</th>`);
+  html += "</tr>";
+  workers.forEach(w => {
+    html += `<tr><td>${w.name}</td>`;
+    shifts.forEach(s => {
+      html += `<td><input type='checkbox' id='avail_${w.name}_${s.name}'></td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</table>";
+  document.getElementById("availability-table").innerHTML = html;
+}
+
+function addForbiddenPair() {
+  if (shifts.length < 2) { alert("Devi avere almeno 2 turni"); return; }
+  const s1 = prompt("Primo turno vietato:", shifts[0].name);
+  const s2 = prompt("Secondo turno vietato:", shifts[1].name);
+  forbiddenPairs.push([s1, s2]);
+  renderForbiddenPairs();
+}
+
+function renderForbiddenPairs() {
+  const container = document.getElementById("forbidden-list");
+  container.innerHTML = forbiddenPairs.map(p => `<div>${p[0]} - ${p[1]}</div>`).join("");
+}
+
+async function getSchedule() {
+  const H = {};
+  const M = {};
+  const avail = {};
+
+  shifts.forEach(s => H[s.name] = s.hours);
+  workers.forEach(w => M[w.name] = w.maxHours);
+
+  workers.forEach(w => {
+    shifts.forEach(s => {
+      const checked = document.getElementById(`avail_${w.name}_${s.name}`).checked;
+      avail[`${w.name},${s.name}`] = checked ? 1 : 0;
+    });
+  });
+
+  try {
     const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({workers, shifts, H, M, avail, forbidden_pairs})
+      body: JSON.stringify({
+        workers: workers.map(w => w.name),
+        shifts: shifts.map(s => s.name),
+        H, M, avail,
+        forbidden_pairs: forbiddenPairs
+      })
     });
-
     const data = await response.json();
     document.getElementById("output").textContent = JSON.stringify(data, null, 2);
-
   } catch (err) {
     document.getElementById("output").textContent = "Errore: " + err.message;
   }
