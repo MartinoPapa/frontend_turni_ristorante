@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Shiftly</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+    <div class="addworker" id="addworkerpage">
+        <button class="btnClose" onclick="closeworker()"><img src="close.png"></button>
+        <article class="card" role="group" aria-label="Card 1">
+            <p>Nome</p>
+            <input id="nome" type="text" value="">
+            <p>Ruoli</p>
+            <input id="ruolo" type="text" placeholder="inserisci i ruoli separati da virgola">
+
+            <p>Disponibilità</p>
+            <table class="schedule-table" id="scheduleTable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Pranzo</th>
+                        <th>Cena</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lunedì</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Martedì</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Mercoledì</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Giovedì</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Venerdì</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Sabato</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                    <tr>
+                        <td>Domenica</td>
+                        <td><input type="checkbox"></td>
+                        <td><input type="checkbox"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>Ore settimanali</p>
+            <input type="number" min="0" step="1" placeholder="">
+
+            <button id="btnadd" onclick="aggiungiEChiudi()">AGGIUNGI</button>
+        </article>
+
+    </div>
+    <input placeholder="codice" id="codice"><button onclick="caricaDati()">Importa</button><button onclick="salvaDati()">Salva</button>
+    <div class="container">
+        <h1>Shiftly</h1>
+        <div class="section-header">
+            <h2>Personale</h2>
+            <button class="add-btn" onclick="openworker()">+ Aggiungi</button>
+        </div>
+
+    </div>
+
+    <div class="slider-wrap" aria-label="Card slider example">
+        <div class="slider-viewport" id="viewport" tabindex="0" aria-roledescription="carousel">
+            <div class="slider-track" id="track">
+                <!-- Example cards -->
+
+
+
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section-header">
+            <h2>Ruoli e Turni</h2>
+            <button class="add-btn">+ Aggiungi</button>
+        </div>
+    </div>
+    <div class="ruoli-wrapper">
+        <div class="ruolo">
+            <h4>Cameriere</h4>
+            <table class="shift-table">
+                <thead>
+                    <tr>
+                        <th>Giorno</th>
+                        <th>Turno</th>
+                        <th>Orario</th>
+                        <th>Numero ore</th>
+                        <th>Numero persone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lunedì</td>
+                        <td>Pranzo</td>
+                        <td>12:00 - 15:00</td>
+                        <td>3</td>
+                        <td>2</td>
+                    </tr>
+                    <tr>
+                        <td>Martedì</td>
+                        <td>Cena</td>
+                        <td>19:00 - 23:00</td>
+                        <td>4</td>
+                        <td>3</td>
+                    </tr>
+                    <!-- ...altri giorni -->
+                </tbody>
+            </table>
+            <button class="btnmio">Modifica</button>
+        </div>
+
+        <div class="ruolo">
+            <h4>Runner</h4>
+            <table class="shift-table">
+                <thead>
+                    <tr>
+                        <th>Giorno</th>
+                        <th>Turno</th>
+                        <th>Orario</th>
+                        <th>Numero ore</th>
+                        <th>Numero persone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lunedì</td>
+                        <td>Pranzo</td>
+                        <td>12:00 - 15:00</td>
+                        <td>3</td>
+                        <td>2</td>
+                    </tr>
+                    <tr>
+                        <td>Martedì</td>
+                        <td>Cena</td>
+                        <td>19:00 - 23:00</td>
+                        <td>4</td>
+                        <td>3</td>
+                    </tr>
+                    <!-- ...altri giorni -->
+                </tbody>
+            </table>
+            <button class="btnmio">Modifica</button>
+        </div>
+
+        <div class="ruolo">
+            <h4>Cuoco</h4>
+            <table class="shift-table">
+                <thead>
+                    <tr>
+                        <th>Giorno</th>
+                        <th>Turno</th>
+                        <th>Orario</th>
+                        <th>Numero ore</th>
+                        <th>Numero persone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lunedì</td>
+                        <td>Pranzo</td>
+                        <td>12:00 - 15:00</td>
+                        <td>3</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>Martedì</td>
+                        <td>Cena</td>
+                        <td>19:00 - 23:00</td>
+                        <td>4</td>
+                        <td>2</td>
+                    </tr>
+                    <!-- ...altri giorni -->
+                </tbody>
+            </table>
+            <button class="btnmio">Modifica</button>
+        </div>
+
+
+
+        <!-- altri ruoli... -->
+    </div>
+
+    <script src="gestione.js"></script>
+</body>
+
+</html>
