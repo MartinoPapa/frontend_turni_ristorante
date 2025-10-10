@@ -135,7 +135,13 @@ async function storeData(key, value) {
       console.error("Error storing data:", errorData);
       return;
     }
-    console.log("Data stored successfully");
+    a = await response.json();
+    if(a.key == undefined){
+      alert("codice non valido, impossibile salvare");
+    }
+    else{
+      alert("Dati salvati con successo");
+    }
   } catch (err) {
     console.error("Fetch error:", err);
   }
@@ -195,6 +201,9 @@ function loadWorkers() {
 
 function caricaDati(){
   psw = document.getElementById("codice").value;
+  container.innerHTML = "";
+  workers = [];
+  worker_index = 0;
   loadWorkers();
 }
 
