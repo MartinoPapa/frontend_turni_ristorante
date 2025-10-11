@@ -64,6 +64,7 @@ const container = document.getElementById("track");
 // Aggiunge un lavoratore al container
 function aggiungiLavoratore(lavoratore) {
   container.appendChild(lavoratore.generaCard());
+  storeWorkers()
 }
 
 // Elimina lavoratore
@@ -73,6 +74,7 @@ function eliminaLavoratore(i) {
     lavoratore.article.parentNode.removeChild(lavoratore.article);
   }
   workers = workers.filter(w => w.index !== i);
+  storeWorkers()
 }
 
 // Funzioni per aprire/chiudere form
@@ -140,7 +142,7 @@ async function storeData(key, value) {
       alert("codice non valido, impossibile salvare");
     }
     else{
-      alert("Dati salvati con successo");
+      console.log("Dati salvati con successo");
     }
   } catch (err) {
     console.error("Fetch error:", err);
@@ -160,6 +162,10 @@ async function loadData(key) {
       return null;
     }
     const data = await response.json();
+    if(data.value == undefined){
+      alert("codice non valido, impossibile caricare");
+      return null;
+    }
     return data.value;
   } catch (err) {
     console.error("Fetch error:", err);
