@@ -98,6 +98,10 @@ button:hover {
   flex-direction: column;
 }
 
+.card h4{
+  margin: 0 0 2px !important;
+}
+
 .card h4, .card h5, .card h6 {
   margin: 0 0 8px;
 }
@@ -114,7 +118,7 @@ button:hover {
   color: #555;
 }
 
-.card button {
+.card button{
   padding: 5px;
   margin: 10px 20%;
   width: 60%;
@@ -123,7 +127,17 @@ button:hover {
   border: none;
   border-radius: 5px;
   position: relative;
-  z-index: 9999;
+}
+
+.ruolo button {
+  padding: 5px;
+  margin: 5px;
+  width: 30%;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  position: relative;
 }
 
 .card button:hover {
@@ -251,7 +265,6 @@ button:hover {
   background: transparent;
   border: none;
   cursor: pointer;
-  z-index: 1001;
 }
 
 .addworker .btnClose img {
@@ -298,4 +311,22 @@ button:hover {
   width: 20% !important;
   padding: 5px !important;
   margin: 0 !important;
-}}
+}
+
+#loginpage{
+  display: flex;
+}
+
+#loginpage *{
+  font-size: 15px;
+}
+
+#loginpage h2{
+  font-size: 17px;
+  font-weight: normal;
+}
+
+#loginpage p{
+  color: #555;
+  font-size: 14px;
+}

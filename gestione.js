@@ -6,7 +6,7 @@ let workers = [];
 let roles = [];
 let worker_index = 0;
 let role_index = 0;
-let psw = "tino";
+let psw = "";
 let editingRoleIndex = -1;
 
 // URL backend (aggiorna se locale)
@@ -44,15 +44,10 @@ async function loadData(key) {
     return data.value;
   } catch (err) {
     console.warn("Errore loadData:", err);
-    const fallback = localStorage.getItem(key);
-    if (fallback) {
-      alert("Caricamento da server fallito.");
-      return JSON.parse(fallback);
-    }
-    alert("Nessun dato trovato per questo codice.");
-    return null;
   }
+  return null;
 }
+
 
 // =================== CLASSE LAVORATORE ===================
 class Lavoratore {
@@ -80,7 +75,7 @@ class Lavoratore {
         </thead>
         <tbody>
           ${Object.entries(this.disponibilita)
-            .map(([giorno, disp]) => `
+        .map(([giorno, disp]) => `
               <tr>
                 <td>${giorno}</td>
                 <td class="${disp.pranzo ? "yes" : "no"}">${disp.pranzo ? "Sì" : "No"}</td>
@@ -131,7 +126,7 @@ class Ruolo {
       <h4>${this.nome}</h4>
       <table class="shift-table">
         <thead>
-          <tr><th>Giorno</th><th>Turno</th><th>Ore</th><th>Persone</th></tr>
+          <tr><th>Giorno</th><th>Turno</th><th># Ore</th><th># Persone</th></tr>
         </thead>
         <tbody>${shiftRows}</tbody>
       </table>
@@ -206,7 +201,11 @@ function openrole() {
   clearAddRoleForm();
   addShiftRow();
 }
-function closerole() { document.getElementById("addrolepage").style.display = "none"; }
+function closerole() { 
+  document.getElementById("addrolepage").style.display = "none"; 
+  editingRoleIndex = -1;
+
+}
 
 function addShiftRow(prefill = null) {
   const container = document.getElementById("roleShiftsContainer");
@@ -297,9 +296,8 @@ function storeAll() {
 }
 
 function loadAll() {
-  if (!psw) return alert("Inserisci un codice prima di caricare.");
   loadData(psw).then(data => {
-    if (!data) return;
+    if (!data) throw new Error("Il codice inserito non corrisponde a nessun ristorante.");
     workers = (data.workers || []).map(
       w => new Lavoratore(w.nome, w.ruoli, w.disponibilita, w.maxOre)
     );
@@ -308,7 +306,11 @@ function loadAll() {
     role_index = roles.length;
     renderWorkers();
     renderRoles();
+  }).catch(err => {
+    alert(err.message);
+    return false;
   });
+  return true;
 }
 
 function salvaDati() {
@@ -317,4 +319,11 @@ function salvaDati() {
 
 function caricaDati() {
   loadAll();
+}
+
+function login() {
+  psw = document.getElementById("codice").value.trim();
+  if(loadAll()){
+    document.getElementById("loginpage").style.display = "none";
+  }
 }

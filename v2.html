@@ -85,23 +85,13 @@
         </article>
     </div>
 
-    <!-- Modal: risultati generazione turni -->
-    <div class="addworker" id="scheduleResultPage" style="display:none;">
-        <button class="btnClose" onclick="closeScheduleResult()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card" role="group" aria-label="Risultati turni">
-            <h3>Risultato generazione turni</h3>
-            <div id="scheduleResultContent" style="max-height:60vh; overflow:auto; text-align:left;"></div>
-            <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-                <button class="add-btn" onclick="closeScheduleResult()">Chiudi</button>
-            </div>
+    <div class="addworker" id="loginpage">
+        <article class="card" role="group" aria-label="Card add ruolo">
+            <h2>Inserire il codice associato al vostro ristorante</h2>
+            <input placeholder="codice ristorante" id="codice" value="tino">
+            <button onclick="login()">Login</button>
+            <p>In caso di codice dimenticato, contattare <span>martino.papa.tn@gmail.com</span></p>
         </article>
-    </div>
-
-    <!-- Codice per salvare/caricare -->
-    <div style="margin:12px;">
-        <input placeholder="codice" id="codice">
-        <button onclick="caricaDati()">Importa</button>
-        <button onclick="salvaDati()">Salva</button>
     </div>
 
     <div class="container">
