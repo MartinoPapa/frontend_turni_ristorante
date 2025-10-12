@@ -1,22 +1,74 @@
-// Serializza un lavoratore in oggetto plain
+// ==========================================
+// GESTIONE FRONTEND: lavoratori + ruoli + turni
+// ==========================================
+
+let workers = [];
+let roles = [];
+let worker_index = 0;
+let role_index = 0;
+let psw = "tino";
+let editingRoleIndex = -1;
+
+// URL backend (aggiorna se locale)
+const BACKEND_URL = "https://backend-turni-ristorante.onrender.com";
+
+// =================== FUNZIONI FETCH ===================
+async function storeData(key, value) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/store`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    console.log("Dati salvati:", data);
+    return data;
+  } catch (err) {
+    console.error("Errore storeData:", err);
+    alert("Errore di connessione al server.");
+    localStorage.setItem(key, JSON.stringify(value));
+    return { local: true };
+  }
+}
+
+async function loadData(key) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/load`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data.value;
+  } catch (err) {
+    console.warn("Errore loadData:", err);
+    const fallback = localStorage.getItem(key);
+    if (fallback) {
+      alert("Caricamento da server fallito.");
+      return JSON.parse(fallback);
+    }
+    alert("Nessun dato trovato per questo codice.");
+    return null;
+  }
+}
+
+// =================== CLASSE LAVORATORE ===================
 class Lavoratore {
   constructor(nome, ruoli, disponibilita, maxOre) {
     this.nome = nome;
     this.ruoli = ruoli;
     this.disponibilita = disponibilita;
     this.maxOre = maxOre;
-    this.index = -1;
+    this.index = worker_index++;
     this.article = null;
   }
 
   generaCard() {
     const article = document.createElement("article");
-    this.article = article;
-    workers.push(this);
-    this.index = worker_index++;
     article.classList.add("card");
-    article.setAttribute("role", "group");
-    article.setAttribute("aria-label", `Card ${this.nome}`);
+    this.article = article;
 
     article.innerHTML = `
       <h4>${this.nome}</h4>
@@ -24,20 +76,16 @@ class Lavoratore {
       <h5>Disponibilità</h5>
       <table class="schedule-table">
         <thead>
-          <tr>
-            <th></th>
-            <th>Pranzo</th>
-            <th>Cena</th>
-          </tr>
+          <tr><th></th><th>Pranzo</th><th>Cena</th></tr>
         </thead>
         <tbody>
-          ${Object.entries(this.disponibilita).map(([giorno, disp]) => `
-            <tr>
-              <td>${giorno}</td>
-              <td class="${disp.pranzo ? "yes" : "no"}">${disp.pranzo ? "Sì" : "No"}</td>
-              <td class="${disp.cena ? "yes" : "no"}">${disp.cena ? "Sì" : "No"}</td>
-            </tr>
-          `).join("")}
+          ${Object.entries(this.disponibilita)
+            .map(([giorno, disp]) => `
+              <tr>
+                <td>${giorno}</td>
+                <td class="${disp.pranzo ? "yes" : "no"}">${disp.pranzo ? "Sì" : "No"}</td>
+                <td class="${disp.cena ? "yes" : "no"}">${disp.cena ? "Sì" : "No"}</td>
+              </tr>`).join("")}
         </tbody>
       </table>
       <button onclick="eliminaLavoratore(${this.index})">Elimina</button>
@@ -56,41 +104,61 @@ class Lavoratore {
   }
 }
 
-// Variabili globali
-let workers = [];
-let worker_index = 0;
-const container = document.getElementById("track");
-
-// Aggiunge un lavoratore al container
-function aggiungiLavoratore(lavoratore) {
-  container.appendChild(lavoratore.generaCard());
-  storeWorkers()
-}
-
-// Elimina lavoratore
-function eliminaLavoratore(i) {
-  const lavoratore = workers.find(w => w.index === i);
-  if (lavoratore && lavoratore.article?.parentNode) {
-    lavoratore.article.parentNode.removeChild(lavoratore.article);
+// =================== CLASSE RUOLO ===================
+class Ruolo {
+  constructor(nome, shifts = []) {
+    this.nome = nome;
+    this.shifts = shifts;
+    this.index = role_index++;
+    this.article = null;
   }
-  workers = workers.filter(w => w.index !== i);
-  storeWorkers()
+
+  generaCard() {
+    const article = document.createElement("div");
+    article.classList.add("ruolo");
+    this.article = article;
+
+    const shiftRows = this.shifts.map(s => `
+      <tr>
+        <td>${s.giorno}</td>
+        <td>${s.turno}</td>
+        <td>${s.ore}</td>
+        <td>${s.persone}</td>
+      </tr>
+    `).join("");
+
+    article.innerHTML = `
+      <h4>${this.nome}</h4>
+      <table class="shift-table">
+        <thead>
+          <tr><th>Giorno</th><th>Turno</th><th>Ore</th><th>Persone</th></tr>
+        </thead>
+        <tbody>${shiftRows}</tbody>
+      </table>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button onclick="editRole(${this.index})">Modifica</button>
+        <button onclick="eliminaRuolo(${this.index})">Elimina</button>
+      </div>
+    `;
+    return article;
+  }
+
+  serialize() {
+    return { nome: this.nome, shifts: this.shifts };
+  }
 }
 
-// Funzioni per aprire/chiudere form
+// =================== FUNZIONI PERSONALE ===================
 function openworker() { document.getElementById("addworkerpage").style.display = "flex"; }
 function closeworker() { document.getElementById("addworkerpage").style.display = "none"; }
 
-// Crea lavoratore da form
 function creaLavoratoreDaInput() {
   const nome = document.getElementById("nome").value.trim();
   const ruoli = document.getElementById("ruolo").value.split(",").map(r => r.trim()).filter(r => r);
-  const maxOre = parseInt(document.querySelector('input[type="number"]').value, 10);
+  const maxOre = parseInt(document.querySelector('#maxOreInput').value, 10) || 0;
+  const rows = document.querySelectorAll("#scheduleTable tbody tr");
 
-  const table = document.getElementById("scheduleTable");
-  const rows = table.querySelectorAll("tbody tr");
   const disponibilita = {};
-
   rows.forEach(row => {
     const giorno = row.cells[0].textContent.trim();
     disponibilita[giorno] = {
@@ -102,119 +170,151 @@ function creaLavoratoreDaInput() {
   return new Lavoratore(nome, ruoli, disponibilita, maxOre);
 }
 
-// Aggiungi e chiudi form
 function aggiungiEChiudi() {
   const lavoratore = creaLavoratoreDaInput();
-  aggiungiLavoratore(lavoratore);
+  if (!lavoratore.nome) return alert("Inserisci un nome.");
+  workers.push(lavoratore);
+  document.getElementById("track").appendChild(lavoratore.generaCard());
   closeworker();
   clearAddWorkerForm();
+  storeAll();
 }
 
-// Resetta form
+function eliminaLavoratore(i) {
+  workers = workers.filter(w => w.index !== i);
+  renderWorkers();
+  storeAll();
+}
+
+function renderWorkers() {
+  const track = document.getElementById("track");
+  track.innerHTML = "";
+  workers.forEach(w => track.appendChild(w.generaCard()));
+}
+
 function clearAddWorkerForm() {
   document.getElementById("nome").value = "";
   document.getElementById("ruolo").value = "";
-  document.querySelector('input[type="number"]').value = "";
-  const rows = document.getElementById("scheduleTable").querySelectorAll("tbody tr");
-  rows.forEach(row => {
-    row.cells[1].querySelector("input").checked = false;
-    row.cells[2].querySelector("input").checked = false;
+  document.querySelector('#maxOreInput').value = "";
+  document.querySelectorAll("#scheduleTable tbody input").forEach(i => i.checked = false);
+}
+
+// =================== FUNZIONI RUOLI ===================
+function openrole() {
+  editingRoleIndex = -1;
+  document.getElementById("addrolepage").style.display = "flex";
+  clearAddRoleForm();
+  addShiftRow();
+}
+function closerole() { document.getElementById("addrolepage").style.display = "none"; }
+
+function addShiftRow(prefill = null) {
+  const container = document.getElementById("roleShiftsContainer");
+  const row = document.createElement("div");
+  row.classList.add("shift-row");
+  row.innerHTML = `
+    <select class="day-select">
+      <option>Lunedì</option><option>Martedì</option><option>Mercoledì</option>
+      <option>Giovedì</option><option>Venerdì</option><option>Sabato</option><option>Domenica</option>
+    </select>
+    <select class="turno-select"><option>Pranzo</option><option>Cena</option></select>
+    <input class="small-input ore-input" type="number" min="0" step="1" placeholder="# ore">
+    <input class="small-input persone-input" type="number" min="1" step="1" placeholder="# persone">
+    <button class="delete-shift">X</button>
+  `;
+  if (prefill) {
+    row.querySelector(".day-select").value = prefill.giorno;
+    row.querySelector(".turno-select").value = prefill.turno;
+    row.querySelector(".ore-input").value = prefill.ore;
+    row.querySelector(".persone-input").value = prefill.persone;
+  }
+  row.querySelector(".delete-shift").addEventListener("click", () => container.removeChild(row));
+  container.appendChild(row);
+}
+
+function clearAddRoleForm() {
+  document.getElementById("roleName").value = "";
+  document.getElementById("roleShiftsContainer").innerHTML = "";
+}
+
+function createRoleFromInput() {
+  const nome = document.getElementById("roleName").value.trim();
+  const shifts = [...document.querySelectorAll(".shift-row")].map(row => ({
+    giorno: row.querySelector(".day-select").value,
+    turno: row.querySelector(".turno-select").value,
+    ore: parseInt(row.querySelector(".ore-input").value, 10) || 0,
+    persone: parseInt(row.querySelector(".persone-input").value, 10) || 1
+  }));
+  return new Ruolo(nome, shifts);
+}
+
+function aggiungiRuoloEChiudi() {
+  const ruolo = createRoleFromInput();
+  if (!ruolo.nome || ruolo.shifts.length === 0)
+    return alert("Completa nome e almeno un turno.");
+  if (editingRoleIndex !== -1) {
+    roles = roles.filter(r => r.index !== editingRoleIndex);
+  }
+  editingRoleIndex = -1;
+  // cambiare metodo quando si clicca su modifica indice edit = -1 o indice ruolo
+  roles.push(ruolo);
+  renderRoles();
+  closerole();
+  storeAll();
+}
+
+function editRole(i) {
+  const ruolo = roles.find(r => r.index === i);
+  if (!ruolo) return;
+  editingRoleIndex = i;
+  document.getElementById("addrolepage").style.display = "flex";
+  document.getElementById("roleName").value = ruolo.nome;
+  const cont = document.getElementById("roleShiftsContainer");
+  cont.innerHTML = "";
+  ruolo.shifts.forEach(s => addShiftRow(s));
+}
+
+function eliminaRuolo(i) {
+  roles = roles.filter(r => r.index !== i);
+  renderRoles();
+  storeAll();
+}
+
+function renderRoles() {
+  const wrapper = document.getElementById("ruoliWrapper");
+  wrapper.innerHTML = "";
+  roles.forEach(r => wrapper.appendChild(r.generaCard()));
+}
+
+// =================== SALVATAGGIO / CARICAMENTO ===================
+function storeAll() {
+  if (!psw) return alert("Inserisci un codice prima di salvare.");
+  const value = {
+    workers: workers.map(w => w.serialize()),
+    roles: roles.map(r => r.serialize())
+  };
+  storeData(psw, value);
+}
+
+function loadAll() {
+  if (!psw) return alert("Inserisci un codice prima di caricare.");
+  loadData(psw).then(data => {
+    if (!data) return;
+    workers = (data.workers || []).map(
+      w => new Lavoratore(w.nome, w.ruoli, w.disponibilita, w.maxOre)
+    );
+    roles = (data.roles || []).map(r => new Ruolo(r.nome, r.shifts));
+    worker_index = workers.length;
+    role_index = roles.length;
+    renderWorkers();
+    renderRoles();
   });
 }
 
-psw = ""
-
-// Funzioni fetch per il backend
-async function storeData(key, value) {
-  try {
-    const response = await fetch("https://backend-turni-ristorante.onrender.com/store", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, value })
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error storing data:", errorData);
-      return;
-    }
-    a = await response.json();
-    if(a.key == undefined){
-      alert("codice non valido, impossibile salvare");
-    }
-    else{
-      console.log("Dati salvati con successo");
-    }
-  } catch (err) {
-    console.error("Fetch error:", err);
-  }
+function salvaDati() {
+  storeAll();
 }
 
-async function loadData(key) {
-  try {
-    const response = await fetch("https://backend-turni-ristorante.onrender.com/load", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key })
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error loading data:", errorData);
-      return null;
-    }
-    const data = await response.json();
-    if(data.value == undefined){
-      alert("codice non valido, impossibile caricare");
-      return null;
-    }
-    return data.value;
-  } catch (err) {
-    console.error("Fetch error:", err);
-    return null;
-  }
+function caricaDati() {
+  loadAll();
 }
-
-// Salva tutti i lavoratori sul server
-function storeWorkers() {
-  const validWorkers = workers
-    .filter(w => w.nome && w.ruoli.length > 0 && !isNaN(w.maxOre))
-    .map(w => w.serialize());
-
-  const dataToStore = { workers: validWorkers };
-  storeData("workers"+psw, dataToStore);
-}
-
-// Carica lavoratori dal server e crea le card
-function loadWorkers() {
-  try{
-    loadData("workers"+psw).then(value => {
-    if (value?.workers?.length) {
-      value.workers.forEach(wData => {
-        const lavoratore = new Lavoratore(
-          wData.nome,
-          wData.ruoli,
-          wData.disponibilita,
-          wData.maxOre
-        );
-        aggiungiLavoratore(lavoratore);
-      });
-    }
-  });
-  }catch{
-    alert("codice non trovato");
-  }
-  
-}
-
-function caricaDati(){
-  psw = document.getElementById("codice").value;
-  container.innerHTML = "";
-  workers = [];
-  worker_index = 0;
-  loadWorkers();
-}
-
-function salvaDati(){
-  psw = document.getElementById("codice").value;
-  storeWorkers();
-}
-

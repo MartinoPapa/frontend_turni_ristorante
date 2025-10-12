@@ -1,3 +1,4 @@
+/* ================== STILI GLOBALI ================== */
 body {
   font-family: Arial, sans-serif;
   padding: 0;
@@ -6,79 +7,99 @@ body {
 
 .container {
   margin: 0 20px;
-  margin-bottom: 0;
   padding: 20px 0;
-  padding-bottom: 0;
 }
 
 h1 {
   margin-bottom: 20px;
 }
 
-/* Slider container */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0px;
+  padding: 5px 0;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.4em;
+  color: #333;
+}
+
+#btnadd{
+  margin-top: 20px;
+}
+
+.add-btn {
+  background-color: #555;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: background-color 0.2s ease;
+}
+
+.add-btn:hover {
+  background-color: #333;
+}
+
+button:hover {
+  cursor: pointer;
+}
+
+#add-turno{
+  margin: 0 !important;
+  margin-top: 10px !important;
+  margin-bottom: 20px !important;
+  margin-left: 40% !important;
+  width: 20% !important;
+  font-size: 12px !important;
+}
+
+/* ========== CARD LAVORATORE ========== */
 .slider-wrap {
   max-width: 100%;
-  margin: 0 auto;
-  margin-bottom: 20px;
+  margin: 0 auto 20px;
   padding: 5px 20px;
-  position: relative;
   background-color: #555;
 }
 
-/* Scrollable viewport */
 .slider-viewport {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   border-radius: 8px;
-
   position: relative;
-  z-index: 0;
 }
 
-/* Track */
 .slider-track {
   display: flex;
   gap: 16px;
   padding: 12px;
   width: max-content;
-
-  overflow: visible;
-  position: relative;
-  z-index: 1;
 }
 
-/* Each card */
 .card {
   scroll-snap-align: start;
-  flex: 0 0 300px; /* card width */
+  flex: 0 0 300px;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   padding: 12px 20px;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-
-  /* ✅ Fix 3: give cards their own safe stacking layer */
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
 }
 
-.card h4,
-h5,
-h6 {
+.card h4, .card h5, .card h6 {
   margin: 0 0 8px;
-}
-
-.card h4 {
-  font-size: 18px;
-  margin-bottom: 0;
-}
-
-.card h5 {
-  margin-top: 0;
 }
 
 .card h6 {
@@ -101,32 +122,15 @@ h6 {
   color: #fff;
   border: none;
   border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-
-  /* ✅ Fix 4: ensure button floats above any scroll/overlay layers */
   position: relative;
   z-index: 9999;
-  pointer-events: auto;
 }
 
 .card button:hover {
-  cursor: pointer;
   background-color: #333;
 }
 
-/* Responsive: smaller cards on narrow screens */
-@media (max-width: 640px) {
-  .card {
-    flex: 0 0 80%; /* show ~1 card on phone */
-  }
-
-  .slider-track {
-    gap: 12px;
-    padding: 10px;
-  }
-}
-
+/* ========== TABELLE DISPONIBILITÀ ========== */
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
@@ -136,13 +140,12 @@ h6 {
 
 .schedule-table thead th {
   background: #f5f5f5;
-  font-weight: normal; /* removes bold effect */
+  font-weight: normal;
   padding: 8px;
   border-bottom: 2px solid #ddd;
 }
 
-.schedule-table td,
-.schedule-table th {
+.schedule-table td, .schedule-table th {
   padding: 8px;
   border: 1px solid #ddd;
 }
@@ -151,7 +154,6 @@ h6 {
   background: #fafafa;
 }
 
-/* Color coding for clarity */
 .schedule-table td.yes {
   color: #2c7a2c;
   font-weight: bold;
@@ -162,104 +164,7 @@ h6 {
   font-weight: bold;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding: 5px 0;
-}
-
-.section-header h2 {
-  margin: 0;
-  font-size: 1.4em;
-  color: #333;
-}
-
-.add-btn {
-  background-color: #555;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.95em;
-  transition: background-color 0.2s ease;
-}
-
-#btnadd {
-  font-size: 1em;
-  padding: 10px;
-  margin: 20px 30%;
-  width: 40%;
-}
-
-.shift-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95em;
-  margin: 10px 0;
-  background-color: #fff;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-.shift-table thead {
-  background-color: #f7f7f7;
-}
-
-.shift-table th,
-.shift-table td {
-  padding: 10px 14px;
-  text-align: center;
-  border-bottom: 1px solid #eaeaea;
-}
-
-.shift-table th {
-  font-weight: normal; /* niente grassetto */
-  color: #fff;
-  font-size: 0.9em;
-  background-color: #555; /* azzurrino leggero */
-}
-
-.shift-table tbody tr:nth-child(even) {
-  background-color: #fafafa;
-}
-
-.shift-table tbody tr:hover {
-  background-color: #f0f8ff; /* azzurrino leggero al passaggio */
-}
-
-.shift-table td:first-child {
-  font-weight: 500;
-}
-
-.btnmio {
-  padding: 5px;
-  margin: 10px 35%;
-  width: 30%;
-  background-color: #555;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-header h2 {
-  margin: 0;
-  font-size: 1.4em;
-  color: #333;
-}
-
-/* wrapper con scroll orizzontale */
+/* ========== RUOLI / TURNI ========== */
 .ruoli-wrapper {
   display: flex;
   gap: 20px;
@@ -270,14 +175,15 @@ h6 {
 }
 
 .ruolo {
-  min-width: 350px; /* ogni card ha una larghezza minima */
-  flex: 0 0 auto; /* evita che si restringano */
+  min-width: 350px;
+  flex: 0 0 auto;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 15px;
   background: #fff;
   scroll-snap-align: start;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 .ruolo h4 {
@@ -285,6 +191,7 @@ h6 {
   margin-bottom: 10px;
 }
 
+/* tabella dei shift interni al ruolo */
 .shift-table {
   width: 100%;
   border-collapse: collapse;
@@ -292,8 +199,7 @@ h6 {
   margin-bottom: 10px;
 }
 
-.shift-table th,
-.shift-table td {
+.shift-table th, .shift-table td {
   border: 1px solid #eee;
   padding: 6px;
   text-align: center;
@@ -307,50 +213,89 @@ h6 {
   font-weight: normal;
 }
 
-article {
-  text-align: center;
-}
-
-button:hover {
-  cursor: pointer;
-}
-
+/* ========== MODALI (Personale, Ruoli, Risultati) ========== */
 .addworker {
   position: fixed;
-  display: none;
-  justify-content: center; /* Horizontal */
-  align-items: center; /* Vertical */
-  height: 100vh;
+  top: 0;
+  left: 0;
   width: 100vw;
-  z-index: 999;
-  background: #f0f0f0;
+  height: 100vh;
+  background: rgba(240, 240, 240, 0.95);
+  display: none; /* nascosto all'inizio */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: auto;
 }
 
 .addworker article {
-  min-width: 600px;
+  position: relative;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  padding: 30px 40px;
+  min-width: 700px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: center;
 }
 
-.btnClose {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 100%;
-  margin: 0;
-  width: 60px;
-  height: 60px;
+/* bottone di chiusura interno al modale */
+.addworker .btnClose {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 1001;
 }
 
-.btnClose img {
-  width: 60px;
-  height: 60px;
-  border-radius: 100%;
-  margin: 0;
+.addworker .btnClose img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-.addworker p {
-  margin: 10px 0;
+/* per assicurarsi che il bottone non appaia quando il modale è nascosto */
+.addworker[style*="display: none"] .btnClose {
+  display: none !important;
 }
 
+/* stili per mobile / schermi piccoli */
+@media (max-width: 640px) {
+  .addworker article {
+    min-width: unset;
+    width: 90vw;
+    padding: 20px;
+  }
+
+  .card {
+    flex: 0 0 80%;
+  }
+
+  .ruoli-wrapper {
+    padding: 10px;
+  }
+}
+
+.delete-shift{
+  width: 20px !important;
+  margin: 0 !important;
+}
+
+.small-input{
+  width: 20% !important;
+  padding: 5px !important;
+  margin: 0 !important;
+}
+
+.day-select, .turno-select{
+  width: 20% !important;
+  padding: 5px !important;
+  margin: 0 !important;
+}}

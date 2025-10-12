@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 
 <head>
     <meta charset="UTF-8">
     <title>Shiftly</title>
     <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
+    <!-- Modal: aggiungi/edita lavoratore -->
     <div class="addworker" id="addworkerpage">
-        <button class="btnClose" onclick="closeworker()"><img src="close.png"></button>
-        <article class="card" role="group" aria-label="Card 1">
+        <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="Chiudi"></button>
+        <article class="card" role="group" aria-label="Card add lavoratore">
             <p>Nome</p>
             <input id="nome" type="text" value="">
             <p>Ruoli</p>
@@ -66,29 +66,56 @@
             </table>
 
             <p>Ore settimanali</p>
-            <input type="number" min="0" step="1" placeholder="">
+            <input id="maxOreInput" type="number" min="0" step="1" placeholder="">
 
             <button id="btnadd" onclick="aggiungiEChiudi()">AGGIUNGI</button>
         </article>
-
     </div>
-    <input placeholder="codice" id="codice"><button onclick="caricaDati()">Importa</button><button onclick="salvaDati()">Salva</button>
+
+    <!-- Modal: aggiungi/edita ruolo/turni -->
+    <div class="addworker" id="addrolepage" style="display:none;">
+        <button class="btnClose" onclick="closerole()"><img src="close.png" alt="Chiudi"></button>
+        <article class="card" role="group" aria-label="Card add ruolo">
+            <p>Ruolo</p>
+            <input id="roleName" type="text" value="" placeholder="">
+            <p>Turni</p>
+            <div id="roleShiftsContainer"></div>
+            <button class="add-btn" onclick="addShiftRow()" id="add-turno">Aggiungi turno</button>
+            <button id="btnAddRole" onclick="aggiungiRuoloEChiudi()">SALVA</button>
+        </article>
+    </div>
+
+    <!-- Modal: risultati generazione turni -->
+    <div class="addworker" id="scheduleResultPage" style="display:none;">
+        <button class="btnClose" onclick="closeScheduleResult()"><img src="close.png" alt="Chiudi"></button>
+        <article class="card" role="group" aria-label="Risultati turni">
+            <h3>Risultato generazione turni</h3>
+            <div id="scheduleResultContent" style="max-height:60vh; overflow:auto; text-align:left;"></div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                <button class="add-btn" onclick="closeScheduleResult()">Chiudi</button>
+            </div>
+        </article>
+    </div>
+
+    <!-- Codice per salvare/caricare -->
+    <div style="margin:12px;">
+        <input placeholder="codice" id="codice">
+        <button onclick="caricaDati()">Importa</button>
+        <button onclick="salvaDati()">Salva</button>
+    </div>
+
     <div class="container">
         <h1>Shiftly</h1>
         <div class="section-header">
             <h2>Personale</h2>
-            <button class="add-btn" onclick="openworker()">+ Aggiungi</button>
+            <button class="add-btn" onclick="openworker()">+ Aggiungi lavoratore</button>
         </div>
-
     </div>
 
     <div class="slider-wrap" aria-label="Card slider example">
         <div class="slider-viewport" id="viewport" tabindex="0" aria-roledescription="carousel">
             <div class="slider-track" id="track">
-                <!-- Example cards -->
-
-
-
+                <!-- Card lavoratori inserite dinamicamente -->
             </div>
         </div>
     </div>
@@ -96,114 +123,17 @@
     <div class="container">
         <div class="section-header">
             <h2>Ruoli e Turni</h2>
-            <button class="add-btn">+ Aggiungi</button>
+            <div>
+                <button class="add-btn" onclick="openrole()">+ Aggiungi ruolo</button>
+                
+            </div>
         </div>
     </div>
-    <div class="ruoli-wrapper">
-        <div class="ruolo">
-            <h4>Cameriere</h4>
-            <table class="shift-table">
-                <thead>
-                    <tr>
-                        <th>Giorno</th>
-                        <th>Turno</th>
-                        <th>Orario</th>
-                        <th>Numero ore</th>
-                        <th>Numero persone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Lunedì</td>
-                        <td>Pranzo</td>
-                        <td>12:00 - 15:00</td>
-                        <td>3</td>
-                        <td>2</td>
-                    </tr>
-                    <tr>
-                        <td>Martedì</td>
-                        <td>Cena</td>
-                        <td>19:00 - 23:00</td>
-                        <td>4</td>
-                        <td>3</td>
-                    </tr>
-                    <!-- ...altri giorni -->
-                </tbody>
-            </table>
-            <button class="btnmio">Modifica</button>
-        </div>
 
-        <div class="ruolo">
-            <h4>Runner</h4>
-            <table class="shift-table">
-                <thead>
-                    <tr>
-                        <th>Giorno</th>
-                        <th>Turno</th>
-                        <th>Orario</th>
-                        <th>Numero ore</th>
-                        <th>Numero persone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Lunedì</td>
-                        <td>Pranzo</td>
-                        <td>12:00 - 15:00</td>
-                        <td>3</td>
-                        <td>2</td>
-                    </tr>
-                    <tr>
-                        <td>Martedì</td>
-                        <td>Cena</td>
-                        <td>19:00 - 23:00</td>
-                        <td>4</td>
-                        <td>3</td>
-                    </tr>
-                    <!-- ...altri giorni -->
-                </tbody>
-            </table>
-            <button class="btnmio">Modifica</button>
-        </div>
-
-        <div class="ruolo">
-            <h4>Cuoco</h4>
-            <table class="shift-table">
-                <thead>
-                    <tr>
-                        <th>Giorno</th>
-                        <th>Turno</th>
-                        <th>Orario</th>
-                        <th>Numero ore</th>
-                        <th>Numero persone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Lunedì</td>
-                        <td>Pranzo</td>
-                        <td>12:00 - 15:00</td>
-                        <td>3</td>
-                        <td>1</td>
-                    </tr>
-                    <tr>
-                        <td>Martedì</td>
-                        <td>Cena</td>
-                        <td>19:00 - 23:00</td>
-                        <td>4</td>
-                        <td>2</td>
-                    </tr>
-                    <!-- ...altri giorni -->
-                </tbody>
-            </table>
-            <button class="btnmio">Modifica</button>
-        </div>
-
-
-
-        <!-- altri ruoli... -->
+    <div class="ruoli-wrapper" id="ruoliWrapper">
+        <!-- Ruoli inseriti dinamicamente -->
     </div>
-
+    <button class="add-btn" onclick="generaTurni()">Genera Turni</button> 
     <script src="gestione.js"></script>
 </body>
 
