@@ -306,11 +306,12 @@ function loadAll() {
     role_index = roles.length;
     renderWorkers();
     renderRoles();
+    console.log("Login effettuato con codice:", psw);
+    document.getElementById("loginpage").style.display = "none";
   }).catch(err => {
     alert(err.message);
     return false;
   });
-  return true;
 }
 
 function salvaDati() {
@@ -323,7 +324,5 @@ function caricaDati() {
 
 function login() {
   psw = document.getElementById("codice").value.trim();
-  if(loadAll()){
-    document.getElementById("loginpage").style.display = "none";
-  }
+  loadAll();
 }
