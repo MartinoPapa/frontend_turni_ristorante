@@ -201,8 +201,8 @@ function openrole() {
   clearAddRoleForm();
   addShiftRow();
 }
-function closerole() { 
-  document.getElementById("addrolepage").style.display = "none"; 
+function closerole() {
+  document.getElementById("addrolepage").style.display = "none";
   editingRoleIndex = -1;
 
 }
@@ -297,6 +297,7 @@ function storeAll() {
 
 function loadAll() {
   loadData(psw).then(data => {
+    console.log(data);
     if (!data) throw new Error("Il codice inserito non corrisponde a nessun ristorante.");
     workers = (data.workers || []).map(
       w => new Lavoratore(w.nome, w.ruoli, w.disponibilita, w.maxOre)
@@ -307,9 +308,8 @@ function loadAll() {
     renderWorkers();
     renderRoles();
     console.log("Login effettuato con codice:", psw);
-    document.getElementById("loginpage").style.display = "none";
   }).catch(err => {
-    alert(err.message);
+    console.error(err);
     return false;
   });
 }
@@ -322,7 +322,32 @@ function caricaDati() {
   loadAll();
 }
 
-function login() {
+async function inList() {
+  try {
+    const response = await fetch(`${BACKEND_URL}/inList`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: psw })
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+async function login() {
   psw = document.getElementById("codice").value.trim();
-  loadAll();
+  if (!psw) return alert("Inserisci un codice.");
+
+  inList().then(booolean => {
+    booolean = booolean.valid;
+    if (!booolean) {
+      alert("Codice non valido, impossibile accedere");
+      return;
+    }
+    document.getElementById("loginpage").style.display = "none";
+    loadAll();
+  });
 }
