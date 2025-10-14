@@ -106,6 +106,7 @@ class Ruolo {
     this.shifts = shifts;
     this.index = role_index++;
     this.article = null;
+    this.i = -1;
   }
 
   generaCard() {
