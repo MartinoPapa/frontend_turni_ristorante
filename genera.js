@@ -48,7 +48,7 @@ function getShifts() {
         }
         // for each shift in the role
         for (const s of r.shifts) {
-            s.i = s.giorno.toLowerCase() + s.turno.toLowerCase(); // serve per il forbidden set
+            s.i = s.giorno.toLowerCase() + "/" + s.turno.toLowerCase(); // serve per il forbidden set
             // need one shift for each person required
             for (let j = 0; j < s.persone; j++) {
                 shifts.push(r.nome + "-" + s.i.toString() + "-" + j.toString()); // roleIndex-shiftIndex-shiftPersonIndex
@@ -89,7 +89,6 @@ function getForbiddenSet() {
     for (let index = 0; index < groupedArray.length; index++) {
         g = groupedArray[index];
         forbiddenSubset = [];
-        console.log("Giorno: " + g.giorno + " Turno: " + g.turno);
         for (let internal_index = 0; internal_index < g.shifts.length; internal_index++) {
             s = g.shifts[internal_index];
             nomei = s.role + "-" + s.i;
@@ -124,24 +123,23 @@ function generaSets() {
     getWorkers();
     getShifts();
     getForbiddenSet();
-    printSets();
 }
 
 function downloadPayload(payload, filename = "payload.txt") {
-  const text = JSON.stringify(payload, null, 2);
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+    const text = JSON.stringify(payload, null, 2);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  // necessario per Firefox: aggiungere al DOM, click, poi rimuovere
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    // necessario per Firefox: aggiungere al DOM, click, poi rimuovere
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
 
-  // libera la risorsa
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // libera la risorsa
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function getSchedule() {
@@ -156,9 +154,7 @@ async function getSchedule() {
         "forbidden_pairs": forbiddenSet
     };
 
-    console.log("Payload:", payload);
-    //downloadPayload(payload, "payload.txt");
-
+    document.getElementById("btngenera").innerHTML = "Attendere...";
     try {
         const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
             method: "POST",
@@ -168,16 +164,101 @@ async function getSchedule() {
 
         if (!response.ok) {
             const text = await response.text();
-            console.error("Errore backend:", response.status, text);
+            alert("Il personale disponibile non è sufficiente per coprire tutti i turni richiesti.");
+            document.getElementById("btngenera").innerHTML = "Genera Turni";
             return;
         }
 
-        const data = await response.json();
-        console.log("Schedule received:", data);
+        let data = await response.json();
+        stampa(data);
+        document.getElementById("datiGenerati").style.display = "flex";
+        document.getElementById("btngenera").innerHTML = "Genera Turni";
+
     } catch (err) {
         console.error("Error fetching schedule:", err);
+        document.getElementById("btngenera").innerHTML = "Genera Turni";
+    }
+
+}
+result = {}
+function stampa(data) {
+    document.getElementById("generated").innerHTML = "";
+    result = {};
+    for (const [worker, info] of Object.entries(data.assignments)) {
+        result[worker] = [];
+        info.tasks.forEach(t => {
+            shift = t.shift;
+            ruolo = shift.split("-")[0];
+            giornoturno = shift.split("-")[1];
+            giorno = giornoturno.split("/")[0];
+            turno = giornoturno.split("/")[1];
+            ore = t.hours;
+            result[worker].push({ ruolo, giorno, turno, ore });
+        });
+        stampaTurni(worker, result[worker]);
     }
 }
 
+function stampaTurni(worker, dati) {
+    div = document.getElementById("generated");
+    let text = `<h3>Turni per ${worker}:</h3>`;
+    let oreTotali = 0;
+    for (const entry of dati) {
+        text += `<p>Ruolo: ${entry.ruolo}, Giorno: ${entry.giorno}, Turno: ${entry.turno}, Ore: ${entry.ore}</p>`;
+        oreTotali += entry.ore;
+    }
+    text += `<p><strong>Ore totali: ${oreTotali}</strong></p><hr>`;
+    div.innerHTML += text;
+}
 
-// cambiare 0-0 con LunedìPranzo-0
+function closegenerati() {
+    document.getElementById("datiGenerati").style.display = "none";
+}
+
+function exportScheduleToCSV() {
+  const workers = Object.keys(result);
+
+  const allShifts = new Set();
+  for (const worker of workers) {
+    for (const task of result[worker]) {
+      const shiftKey = `${task.giorno}|${task.turno}`; // separatore sicuro
+      allShifts.add(shiftKey);
+    }
+  }
+  const shifts = Array.from(allShifts);
+
+  const header = ["Giorno", "Turno", ...workers];
+
+  const rows = shifts.map(shiftKey => {
+    const [giorno, turno] = shiftKey.split("|");
+    const row = [giorno, turno];
+
+    for (const worker of workers) {
+      const match = result[worker].find(
+        t => t.giorno === giorno && t.turno === turno
+      );
+      row.push(match ? `${match.ruolo} (${match.ore}h)` : "");
+    }
+    return row;
+  });
+
+  const totals = workers.map(worker =>
+    result[worker].reduce((sum, t) => sum + (t.ore || 0), 0)
+  );
+
+  const totalRow = ["Totale", "", ...totals.map(h => `${h}h`)];
+
+  const csvMatrix = [header, ...rows, totalRow];
+
+  const csvContent =
+    "\uFEFF" + csvMatrix.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "turni.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

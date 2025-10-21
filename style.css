@@ -331,3 +331,44 @@ button:hover {
   color: #555;
   font-size: 14px;
 }
+
+  .genera {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    flex-wrap: wrap;
+    width: 100%;
+    margin: 30px 0px;
+  }
+
+.genera button{
+  background-color: #555;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2em;
+  transition: background-color 0.2s ease; 
+}
+
+.footer {
+  text-align: center;
+}
+
+.scaricabtn{
+  background-color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  
+}
+
+.center{
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}

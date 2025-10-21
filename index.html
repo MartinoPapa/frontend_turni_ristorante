@@ -89,7 +89,7 @@
         <article class="card" role="group" aria-label="Card add ruolo">
             <h2>Inserire il codice associato al vostro ristorante</h2>
             <input placeholder="codice ristorante" id="codice" value="">
-            <button onclick="login()">Login</button>
+            <button onclick="login()" id="logbutton">Login</button>
             <p>In caso di codice dimenticato, contattare <span>martino.papa.tn@gmail.com</span></p>
         </article>
     </div>
@@ -115,7 +115,7 @@
             <h2>Ruoli e Turni</h2>
             <div>
                 <button class="add-btn" onclick="openrole()">+ Aggiungi ruolo</button>
-                
+
             </div>
         </div>
     </div>
@@ -126,6 +126,28 @@
     <!-- 
     <button class="add-btn" onclick="generaTurni()">Genera Turni</button> 
     -->
+    <div class="genera">
+        <button onclick="getSchedule()" id="btngenera">Genera Turni</button>
+
+    </div>
+
+    <div class="addworker" id="datiGenerati">
+        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="Chiudi"></button>
+        <div>
+            <h1>Turni generati con successo</h1>
+            <div class="center">
+                <button onclick="exportScheduleToCSV()" class="scaricabtn">Scarica</button>
+            </div>
+
+            <div id="generated"></div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <p>Developed by Martino Papa - 2025</p>
+    </div>
+
     <script src="gestione.js"></script>
     <script src="genera.js"></script>
 </body>

@@ -339,9 +339,12 @@ async function inList() {
 }
 
 async function login() {
+  
   psw = document.getElementById("codice").value.trim();
   if (!psw) return alert("Inserisci un codice.");
-
+  document.getElementById("logbutton").disabled = true;
+  document.getElementById("logbutton").innerText = "Attendere...";
+  await
   inList().then(booolean => {
     booolean = booolean.valid;
     if (!booolean) {
@@ -351,4 +354,6 @@ async function login() {
     document.getElementById("loginpage").style.display = "none";
     loadAll();
   });
+  document.getElementById("logbutton").disabled = false;
+  document.getElementById("logbutton").innerText = "Login";
 }
