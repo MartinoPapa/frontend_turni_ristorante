@@ -1,24 +1,3 @@
-
-
-/*
-constructor(nome, ruoli, disponibilita, maxOre) {
-    this.nome = nome;
-    this.ruoli = ruoli;
-    this.disponibilita = disponibilita;
-    this.maxOre = maxOre;
-    this.index = worker_index++;
-    this.article = null;
-  }
-
-    constructor(nome, shifts = []) {
-    this.nome = nome;
-    this.shifts = shifts;
-    this.index = role_index++;
-    this.article = null;
-  }
-
-  */
-
 function getWorkers() {
     for (const w of workers) {
         workers_id.push(w.nome);
@@ -261,4 +240,17 @@ function exportScheduleToCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+
+function creaTuttoFare() {
+  const nome = "Turno Scoperto";
+  const ruoli = roles.map(r => r.nome);
+  const giorni = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+  const disponibilita = {};
+  giorni.forEach(giorno => {
+    disponibilita[giorno] = { pranzo: true, cena: true };
+  });
+  const maxOre = 999;
+  return new Lavoratore(nome, ruoli, disponibilita, maxOre);
 }
