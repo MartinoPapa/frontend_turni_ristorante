@@ -401,3 +401,18 @@ button:hover {
 }
 .select-options label:hover { background:#f1f6ff; }
 .select-options input[type="checkbox"] { width:16px; height:16px; }
+
+#logo{
+  z-index: 1000;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 100px;
+  border: 1px solid #555;
+  height: auto;
+}
+
+.container h1{
+  text-align: center;
+  margin-top: 20px;
+}

@@ -225,7 +225,14 @@ function creaLavoratoreDaInput() {
 
 function aggiungiEChiudi() {
   const lavoratore = creaLavoratoreDaInput();
-  if (!lavoratore.nome) return alert("Inserisci un nome.");
+  if (!lavoratore.nome) return alert("Per favore inserire un nome.");
+
+  // 🚫 Controlla se esiste già un lavoratore con lo stesso nome
+  const nomeEsiste = workers.some(w => w.nome.toLowerCase() === lavoratore.nome.toLowerCase() && w.index !== editingWorkerIndex);
+  if (nomeEsiste) {
+    alert("Esiste già un lavoratore con questo nome, per favore scegli un nome diverso.");
+    return;
+  }
 
   if (editingWorkerIndex !== -1) {
     workers = workers.map(w => w.index === editingWorkerIndex ? lavoratore : w);
