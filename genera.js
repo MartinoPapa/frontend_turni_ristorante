@@ -139,7 +139,7 @@ async function getSchedule() {
 
         if (!response.ok) {
             const text = await response.text();
-            alert("Impossibile generare i turni. Personale insufficiente o vincoli troppo stretti.");
+            alert("Impossibile generare i turni. Personale insufficiente");
             document.getElementById("btngenera").innerHTML = "Genera Turni";
             return;
         }
