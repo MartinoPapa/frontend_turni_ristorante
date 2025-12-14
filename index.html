@@ -5,67 +5,27 @@
     <meta charset="UTF-8">
     <title>Shiftly</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
 <body>
     <img src="logo.jpg" id="logo">
-    <!-- Modal: aggiungi/edita lavoratore -->
+    
     <div class="addworker" id="addworkerpage">
         <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card" role="group" aria-label="Card add lavoratore">
+        <article class="card config-worker-page" role="group" aria-label="Card add lavoratore">
             <p>Nome</p>
             <input id="nome" type="text" value="">
             <p>Ruoli</p>
-            <!-- nel form personale -->
             <div id="ruoloSelectContainer"></div>
 
             <p>Disponibilità</p>
-            <table class="schedule-table" id="scheduleTable">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>Pranzo</th>
-                        <th>Cena</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Lunedì</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Martedì</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Mercoledì</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Giovedì</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Venerdì</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Sabato</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td>Domenica</td>
-                        <td><input type="checkbox"></td>
-                        <td><input type="checkbox"></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="schedule-table" id="scheduleTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
             <p>Ore settimanali</p>
             <input id="maxOreInput" type="number" min="0" step="1" placeholder="">
@@ -74,22 +34,38 @@
         </article>
     </div>
 
-    <!-- Modal: aggiungi/edita ruolo/turni -->
     <div class="addworker" id="addrolepage" style="display:none;">
         <button class="btnClose" onclick="closerole()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card" role="group" aria-label="Card add ruolo">
+        <article class="card config-role-page" role="group" aria-label="Card add ruolo">
             <p>Ruolo</p>
             <input id="roleName" type="text" value="" placeholder="inserire il nome del ruolo">
-            <p>Turni</p>
+            <p>Turni Richiesti</p>
+            <div class="shift-header-label">
+                <span>Giorno</span>
+                <span>Turno</span>
+                <span>Persone</span>
+            </div>
             <div id="roleShiftsContainer"></div>
             <button class="add-btn" onclick="addShiftRow()" id="add-turno">Aggiungi turno</button>
             <button id="btnAddRole" onclick="aggiungiRuoloEChiudi()">SALVA</button>
         </article>
     </div>
 
+    <div class="addworker" id="turntypespage" style="display:none;">
+        <button class="btnClose" onclick="closeTurnTypes()"><img src="close.png" alt="Chiudi"></button>
+        <article class="card config-turntypes-page" role="group" aria-label="Card turn types">
+            <h2>Configurazione Orari Turni</h2>
+            <p class="description">Definisci i nomi dei turni e i relativi orari (inizio - fine)</p>
+            
+            <div id="turnTypesList"></div>
+            
+            <button class="add-btn btn-add-custom" onclick="addTurnTypeRow()">+ Aggiungi Tipologia</button>
+            <button id="btnSaveTurnTypes" class="btn-save-custom" onclick="saveTurnTypesAndClose()">Salva</button>
+        </article>
+    </div>
+
     <div class="addworker" id="loginpage">
-        
-        <article class="card" role="group" aria-label="Card add ruolo">
+        <article class="card" role="group" aria-label="Card login">
             <h2>Inserire il codice associato al vostro ristorante</h2>
             <input placeholder="codice ristorante" id="codice" value="">
             <button onclick="login()" id="logbutton">Login</button>
@@ -99,18 +75,20 @@
 
     <div class="container">
         <h1>Gestionale <span>La Torre</span></h1>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
+
         <div class="section-header">
             <h2>Ruoli e Turni</h2>
             <div>
+                <button class="add-btn" onclick="openTurnTypes()">+ Gestisci Turni</button>
                 <button class="add-btn" onclick="openrole()">+ Aggiungi ruolo</button>
-
             </div>
         </div>
     </div>
 
     <div class="ruoli-wrapper" id="ruoliWrapper">
-        <!-- Ruoli inseriti dinamicamente -->
-    </div>
+        </div>
 
     <div class="container">
         <div class="section-header">
@@ -122,16 +100,12 @@
     <div class="slider-wrap" aria-label="Card slider example">
         <div class="slider-viewport" id="viewport" tabindex="0" aria-roledescription="carousel">
             <div class="slider-track" id="track">
-                <!-- Card lavoratori inserite dinamicamente -->
-            </div>
+                </div>
         </div>
     </div>
-    <!-- 
-    <button class="add-btn" onclick="generaTurni()">Genera Turni</button> 
-    -->
+
     <div class="genera">
         <button onclick="getSchedule()" id="btngenera">Genera Turni</button>
-
     </div>
 
     <div class="addworker" id="datiGenerati">
@@ -139,23 +113,27 @@
         <div>
             <h1>Turni generati con successo</h1>
             <div class="center">
-                <button onclick="exportScheduleToCSV()" class="scaricabtn">Scarica</button>
+                <button onclick="exportScheduleToExcel()" class="scaricabtn">Download</button>
             </div>
-
             <div id="generated"></div>
         </div>
-
     </div>
 
     <div class="footer">
+        <div class="local-save-controls">
+            <h3>Salvataggio dati in locale</h3>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button class="scaricabtn" onclick="saveLocal()">Salva</button>
+                <input type="file" id="fileInput" style="display:none" onchange="loadLocal(this)">
+                <button class="scaricabtn" onclick="document.getElementById('fileInput').click()">Carica</button>
+            </div>
+        </div>
+        <br>
         <p> Developed by Martino Papa - 2025 </p>
-        <p>martino.papa.tn@gmail.com <br>
-        +39 393 888 5176
-        </p>
+        <p>martino.papa.tn@gmail.com <br> +39 393 888 5176 </p>
     </div>
 
     <script src="gestione.js"></script>
     <script src="genera.js"></script>
 </body>
-
 </html>

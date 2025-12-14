@@ -134,10 +134,13 @@ button:hover {
   margin: 10px !important;
 }
 
+button{
+  font-size: 0.95em;
+}
+
 .ruolo button {
-  padding: 5px;
-  margin: 5px;
-  width: 30%;
+  padding: 5px 0;
+  width: calc(33% - 3px);
   background-color: #555;
   color: #fff;
   border: none;
@@ -307,19 +310,23 @@ button:hover {
 }
 
 .small-input{
-  width: 20% !important;
+  width: 30% !important;
   padding: 5px !important;
   margin: 0 !important;
 }
 
 .day-select, .turno-select{
-  width: 20% !important;
+  width: 30% !important;
   padding: 5px !important;
   margin: 0 !important;
 }
 
 #loginpage{
   display: flex;
+}
+
+#loginpage input{
+  padding: 4px;
 }
 
 #loginpage *{
@@ -336,16 +343,16 @@ button:hover {
   font-size: 14px;
 }
 
-  .genera {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    text-align: center;
-    flex-wrap: wrap;
-    width: 100%;
-    margin: 30px 0px;
-  }
+.genera {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 30px 0px;
+}
 
 .genera button{
   background-color: #555;
@@ -378,7 +385,7 @@ button:hover {
 }
 
 .btnAddRole{
-  margin: 10px !important;
+  margin: 10px 0 !important;
 }
 
 .custom-multiselect { position: relative; width:100%;}
@@ -415,4 +422,140 @@ button:hover {
 .container h1{
   text-align: center;
   margin-top: 20px;
+}
+
+.time-input {
+  width: 70px !important;
+  padding: 5px !important;
+  margin: 0 5px !important;
+}
+
+.turn-type-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: center;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.shift-header-label {
+    display: flex;
+    justify-content: space-around;
+    padding: 0 40px;
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 5px;
+}
+.shift-header-label span {
+    width: 30%;
+}
+
+.shift-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 0 20px;
+}
+
+.local-save-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #eee;
+    display: inline-block;
+    border-radius: 8px;
+}
+.local-save-controls h3 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: #333;
+}
+
+.schedule-table th {
+    min-width: 60px;
+}
+
+/* ================================================== */
+/* NUOVE CLASSI DI STANDARDIZZAZIONE PER MODALI CONFIG */
+/* ================================================== */
+
+/* 1. PAGINA MODIFICA/AGGIUNTA LAVORATORE */
+.config-worker-page {
+    font-size: 16px; /* Base standard */
+}
+.config-worker-page p {
+    margin: 10px 0 5px;
+    font-weight: bold;
+    color: #333;
+    font-size: 1.1em;
+}
+.config-worker-page .table-responsive {
+    overflow-x: auto;
+    width: 100%;
+    margin-bottom: 15px;
+}
+.config-worker-page .header-subtitle {
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #666;
+    display: block;
+    margin-top: 2px;
+}
+.config-worker-page input[type="text"],
+.config-worker-page input[type="number"] {
+    font-size: 1em;
+    border: 1px solid #ccc;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+/* 2. PAGINA MODIFICA/AGGIUNTA RUOLO */
+.config-role-page {
+    font-size: 16px;
+}
+.config-role-page p {
+    margin: 10px 0 5px;
+    font-weight: bold;
+    color: #333;
+    font-size: 1.1em;
+}
+.config-role-page input[type="text"] {
+    font-size: 1em;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* 3. PAGINA CONFIGURAZIONE TIPI DI TURNO */
+.config-turntypes-page {
+    font-size: 16px;
+}
+.config-turntypes-page h2 {
+    margin-bottom: 5px;
+}
+.config-turntypes-page .description {
+    font-size: 0.95em;
+    color: #555;
+    margin-bottom: 20px;
+}
+.config-turntypes-page .btn-save-custom {
+    margin: 20px auto 10px auto; 
+    width: 40%;
+    padding: 10px;
+    font-size: 1em;
+    display: block;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+.config-turntypes-page .btn-add-custom {
+    margin-top: 10px;
+    font-size: 0.95em;
+}
+.config-turntypes-page .input-turn-name {
+    width: 120px !important;
 }

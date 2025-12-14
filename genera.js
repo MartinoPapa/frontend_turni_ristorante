@@ -1,10 +1,3 @@
-function getWorkers() {
-    for (const w of workers) {
-        workers_id.push(w.nome);
-        max_hours_per_worker[w.nome] = w.maxOre;
-    }
-}
-
 workers_id = []
 max_hours_per_worker = {}
 shifts = []
@@ -12,32 +5,60 @@ hoursPerShift = {}
 availability = {}
 forbiddenSet = []
 
+// Helper: ottieni orario inizio/fine
+function getTurnTimeRange(turnName) {
+    const t = turnTypes.find(x => x.name === turnName);
+    if(!t) return null;
+    
+    const toMin = (str) => {
+        const [h, m] = str.split(":").map(Number);
+        return h * 60 + m;
+    };
+    
+    let start = toMin(t.start);
+    let end = toMin(t.end);
+    
+    if (end < start) end += 24 * 60; 
+
+    return { start, end };
+}
+
+function getWorkers() {
+    for (const w of workers) {
+        workers_id.push(w.nome);
+        max_hours_per_worker[w.nome] = w.maxOre;
+    }
+}
+
 function getShifts() {
     for (const r of roles) {
         i = 0;
         persone_qualificate = [];
         ruolo = r.nome.toLowerCase();
-        r.nome = r.nome.toLowerCase();
-        // find all qualified people for this role
+        
         for (const w of workers) {
-            w.ruoli = w.ruoli.map(s => typeof s === "string" ? s.toLowerCase() : s);
-            if (w.ruoli.includes(ruolo)) {
+            const wRuoli = w.ruoli.map(s => s.toLowerCase());
+            if (wRuoli.includes(ruolo)) {
                 persone_qualificate.push(w.nome);
             }
         }
-        // for each shift in the role
+        
         for (const s of r.shifts) {
-            s.i = s.giorno.toLowerCase() + "/" + s.turno.toLowerCase(); // serve per il forbidden set
-            // need one shift for each person required
+            s.id = s.giorno + "/" + s.turno; 
+            const hrs = getTurnHours(s.turno);
+
             for (let j = 0; j < s.persone; j++) {
-                shifts.push(r.nome + "-" + s.i.toString() + "-" + j.toString()); // roleIndex-shiftIndex-shiftPersonIndex
-                hoursPerShift[r.nome + "-" + s.i.toString() + "-" + j.toString()] = s.ore;
+                const shiftKey = r.nome + "-" + s.id + "-" + j.toString();
+                shifts.push(shiftKey);
+                hoursPerShift[shiftKey] = hrs;
+
                 for (const p of workers) {
-                    // se qualificato e disponibile 1 altrimenti 0
-                    if (persone_qualificate.includes(p.nome) && p.disponibilita[s.giorno][s.turno.toLowerCase()]) {
-                        availability[p.nome + "," + r.nome + "-" + s.i.toString() + "-" + j.toString()] = 1;
+                    const userAvail = p.disponibilita[s.giorno] && p.disponibilita[s.giorno][s.turno];
+                    
+                    if (persone_qualificate.includes(p.nome) && userAvail) {
+                        availability[p.nome + "," + shiftKey] = 1;
                     } else {
-                        availability[p.nome + "," + r.nome + "-" + s.i.toString() + "-" + j.toString()] = 0;
+                        availability[p.nome + "," + shiftKey] = 0;
                     }
                 }
             }
@@ -47,54 +68,46 @@ function getShifts() {
 }
 
 function getForbiddenSet() {
-    const grouped = {};
-    //shift raggruppati per giorno e turno
-    roles.forEach(role => {
-        role.shifts.forEach(s => {
-            const key = `${s.giorno}_${s.turno}`;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push({
-                role: role.nome,
-                ...s
-            });
+    const allShiftInstances = [];
+
+    roles.forEach(r => {
+        r.shifts.forEach(s => {
+            const timeRange = getTurnTimeRange(s.turno);
+            if(!timeRange) return;
+
+            for(let j=0; j<s.persone; j++) {
+                const uniqueId = `${r.nome}-${s.giorno}/${s.turno}-${j}`;
+                allShiftInstances.push({
+                    id: uniqueId,
+                    day: s.giorno,
+                    start: timeRange.start,
+                    end: timeRange.end
+                });
+            }
         });
     });
 
-    const groupedArray = Object.entries(grouped).map(([key, shifts]) => {
-        const [giorno, turno] = key.split("_");
-        return { giorno, turno, shifts };
-    });
+    for(let i=0; i<allShiftInstances.length; i++) {
+        for(let k=i+1; k<allShiftInstances.length; k++) {
+            const s1 = allShiftInstances[i];
+            const s2 = allShiftInstances[k];
 
-    for (let index = 0; index < groupedArray.length; index++) {
-        g = groupedArray[index];
-        forbiddenSubset = [];
-        for (let internal_index = 0; internal_index < g.shifts.length; internal_index++) {
-            s = g.shifts[internal_index];
-            nomei = s.role + "-" + s.i;
-            for (let j = 0; j < s.persone; j++) {
-                forbiddenSubset.push(nomei + "-" + j.toString());
+            if(s1.day === s2.day) {
+                if(s1.start < s2.end && s2.start < s1.end) {
+                    forbiddenSet.push([s1.id, s2.id]);
+                }
             }
         }
-        forbiddenSet.push(forbiddenSubset);
     }
 }
 
 function clearSets() {
-    workers_id = []
-    max_hours_per_worker = {}
-    shifts = []
-    hoursPerShift = {}
-    availability = {}
-    forbiddenSet = []
-}
-
-function printSets() {
-    console.log("workers_id: ", workers_id);
-    console.log("max_hours_per_worker: ", max_hours_per_worker);
-    console.log("shifts: ", shifts);
-    console.log("hoursPerShift: ", hoursPerShift);
-    console.log("availability: ", availability);
-    console.log("forbiddenSet: ", forbiddenSet);
+    workers_id = [];
+    max_hours_per_worker = {};
+    shifts = [];
+    hoursPerShift = {};
+    availability = {};
+    forbiddenSet = [];
 }
 
 function generaSets() {
@@ -102,23 +115,6 @@ function generaSets() {
     getWorkers();
     getShifts();
     getForbiddenSet();
-}
-
-function downloadPayload(payload, filename = "payload.txt") {
-    const text = JSON.stringify(payload, null, 2);
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    // necessario per Firefox: aggiungere al DOM, click, poi rimuovere
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    // libera la risorsa
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function getSchedule() {
@@ -132,7 +128,7 @@ async function getSchedule() {
         "avail": availability,
         "forbidden_pairs": forbiddenSet
     };
-
+    
     document.getElementById("btngenera").innerHTML = "Attendere...";
     try {
         const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
@@ -143,7 +139,7 @@ async function getSchedule() {
 
         if (!response.ok) {
             const text = await response.text();
-            alert("Il personale disponibile non è sufficiente per coprire tutti i turni richiesti.");
+            alert("Impossibile generare i turni. Personale insufficiente o vincoli troppo stretti.");
             document.getElementById("btngenera").innerHTML = "Genera Turni";
             return;
         }
@@ -157,22 +153,26 @@ async function getSchedule() {
         console.error("Error fetching schedule:", err);
         document.getElementById("btngenera").innerHTML = "Genera Turni";
     }
-
 }
-result = {}
+
+let result = {};
+
 function stampa(data) {
     document.getElementById("generated").innerHTML = "";
     result = {};
+    
     for (const [worker, info] of Object.entries(data.assignments)) {
         result[worker] = [];
         info.tasks.forEach(t => {
-            shift = t.shift;
-            ruolo = shift.split("-")[0];
-            giornoturno = shift.split("-")[1];
-            giorno = giornoturno.split("/")[0];
-            turno = giornoturno.split("/")[1];
-            ore = t.hours;
-            result[worker].push({ ruolo, giorno, turno, ore });
+            const raw = t.shift;
+            const parts = raw.split("-");
+            const index = parts.pop();
+            const dayTurn = parts.pop(); 
+            const role = parts.join("-"); 
+            
+            const [giorno, turno] = dayTurn.split("/");
+            
+            result[worker].push({ role, giorno, turno, ore: t.hours });
         });
         stampaTurni(worker, result[worker]);
     }
@@ -182,8 +182,12 @@ function stampaTurni(worker, dati) {
     div = document.getElementById("generated");
     let text = `<h3>Turni per ${worker}:</h3>`;
     let oreTotali = 0;
+    
+    const daysOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+    dati.sort((a,b) => daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno));
+
     for (const entry of dati) {
-        text += `<p>Ruolo: ${entry.ruolo}, Giorno: ${entry.giorno}, Turno: ${entry.turno}, Ore: ${entry.ore}</p>`;
+        text += `<p><strong>${entry.giorno}</strong> (${entry.turno}): ${entry.role} <small>(${entry.ore}h)</small></p>`;
         oreTotali += entry.ore;
     }
     text += `<p><strong>Ore totali: ${oreTotali}</strong></p><hr>`;
@@ -194,63 +198,139 @@ function closegenerati() {
     document.getElementById("datiGenerati").style.display = "none";
 }
 
-function exportScheduleToCSV() {
-  const workers = Object.keys(result);
-
-  const allShifts = new Set();
-  for (const worker of workers) {
-    for (const task of result[worker]) {
-      const shiftKey = `${task.giorno}|${task.turno}`; // separatore sicuro
-      allShifts.add(shiftKey);
-    }
+// ==========================================
+// NEW EXCEL EXPORT (Replacing CSV)
+// ==========================================
+function exportScheduleToExcel() {
+  if (typeof XLSX === 'undefined') {
+      alert("Libreria Excel non caricata correttamente.");
+      return;
   }
-  const shifts = Array.from(allShifts);
 
-  const header = ["Giorno", "Turno", ...workers];
+  const workersList = Object.keys(result);
+  const dayOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+  
+  // Data Structure for the Sheet
+  // Row 1: Headers
+  // Columns: Day/Turn, ...Workers, Total Day
+  
+  const ws_data = [];
+  
+  // 1. HEADER ROW
+  const headerRow = [
+      { v: "Giorno / Turno", s: { font: { bold: true }, fill: { fgColor: { rgb: "E0E0E0" } }, border: { bottom: { style: "thin" } } } }
+  ];
+  
+  workersList.forEach(w => {
+      headerRow.push({ v: w.toUpperCase(), s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "E0E0E0" } }, border: { bottom: { style: "thin" }, left: { style: "thin" } } } });
+  });
+  
+  // Add Header for Daily Totals
+  headerRow.push({ v: "TOTALE ORE", s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "444444" } }, alignment: { horizontal: "center" } } });
+  
+  ws_data.push(headerRow);
 
-  const rows = shifts.map(shiftKey => {
-    const [giorno, turno] = shiftKey.split("|");
-    const row = [giorno, turno];
+  // Initialize sums for Weekly Totals per Worker
+  const weeklyTotalsWorker = {};
+  workersList.forEach(w => weeklyTotalsWorker[w] = 0);
 
-    for (const worker of workers) {
-      const match = result[worker].find(
-        t => t.giorno === giorno && t.turno === turno
-      );
-      row.push(match ? `${match.ruolo} (${match.ore}h)` : "");
-    }
-    return row;
+  // 2. DATA ROWS
+  dayOrder.forEach(giorno => {
+      // Create a section header or just group by borders? Let's iterate turns
+      turnTypes.forEach((tt, idx) => {
+          let dayTotalHours = 0;
+          
+          const row = [];
+          
+          // First Column: Day - Turn
+          // Visual separation: Bold day name only on first turn
+          const label = `${giorno} - ${tt.name}`;
+          const isFirstTurn = (idx === 0);
+          
+          row.push({ 
+              v: label, 
+              s: { 
+                  font: { bold: isFirstTurn }, 
+                  fill: { fgColor: { rgb: isFirstTurn ? "F9F9F9" : "FFFFFF" } },
+                  border: { top: { style: isFirstTurn ? "medium" : "thin" } }
+              } 
+          });
+
+          // Worker Columns
+          workersList.forEach(w => {
+              const task = result[w].find(t => t.giorno === giorno && t.turno === tt.name);
+              let cellVal = "";
+              let cellStyle = { alignment: { horizontal: "center" }, border: { top: { style: isFirstTurn ? "medium" : "thin" }, left: { style: "thin" } } };
+              
+              if (task) {
+                  cellVal = `${task.role}`; // Just Role Name
+                  // Accumulate totals
+                  dayTotalHours += task.ore;
+                  weeklyTotalsWorker[w] += task.ore;
+                  
+                  // Highlight assigned cells
+                  cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; // Light Green
+              }
+              
+              row.push({ v: cellVal, s: cellStyle });
+          });
+
+          // Last Column: Total for this turn row (Staff hours)
+          // "Total hours of the day" usually means per row sum or sum of all turns in that day.
+          // Let's put the sum for this specific turn row here.
+          row.push({ 
+              v: dayTotalHours > 0 ? dayTotalHours : "", 
+              t: 'n',
+              s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "F0F0F0" } } } 
+          });
+
+          ws_data.push(row);
+      });
+      
+      // OPTIONAL: Add a "Daily Total" row separator if needed, but PDF implies compact rows.
+      // We will stick to the side column summing the specific turn hours.
   });
 
-  const totals = workers.map(worker =>
-    result[worker].reduce((sum, t) => sum + (t.ore || 0), 0)
-  );
+  // 3. FOOTER ROW: Grand Totals per Worker
+  const totalRow = [
+      { v: "TOTALE SETTIMANALE", s: { font: { bold: true }, fill: { fgColor: { rgb: "444444" } }, font: { color: { rgb: "FFFFFF" } } } }
+  ];
+  
+  let grandTotalWeek = 0;
 
-  const totalRow = ["Totale", "", ...totals.map(h => `${h}h`)];
-
-  const csvMatrix = [header, ...rows, totalRow];
-
-  const csvContent =
-    "\uFEFF" + csvMatrix.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", "turni.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-
-function creaTuttoFare() {
-  const nome = "Turno Scoperto";
-  const ruoli = roles.map(r => r.nome);
-  const giorni = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
-  const disponibilita = {};
-  giorni.forEach(giorno => {
-    disponibilita[giorno] = { pranzo: true, cena: true };
+  workersList.forEach(w => {
+      const tot = weeklyTotalsWorker[w];
+      grandTotalWeek += tot;
+      totalRow.push({ 
+          v: tot, 
+          t: 'n',
+          s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "DDDDDD" } }, border: { top: { style: "double" } } } 
+      });
   });
-  const maxOre = 999;
-  return new Lavoratore(nome, ruoli, disponibilita, maxOre);
+
+  // Bottom Right Corner: Total Hours of the whole week for everyone
+  totalRow.push({ 
+      v: grandTotalWeek, 
+      t: 'n',
+      s: { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "FFD700" } }, border: { top: { style: "double" } } } 
+  });
+
+  ws_data.push(totalRow);
+
+  // GENERATE WORKBOOK
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+  // Set column widths
+  const wscols = [
+      { wch: 25 }, // Day/Turn column
+      ...workersList.map(() => ({ wch: 15 })), // Worker columns
+      { wch: 15 } // Total column
+  ];
+  ws['!cols'] = wscols;
+
+  XLSX.utils.book_append_sheet(wb, ws, "Turni");
+
+  // Export
+  XLSX.writeFile(wb, "turni_ristorante.xlsx");
 }
