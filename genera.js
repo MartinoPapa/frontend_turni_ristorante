@@ -187,27 +187,46 @@ function stampa(data) {
 
     // 1. PRINT UNCOVERED FIRST (If any)
     if (uncoveredData && uncoveredData.length > 0) {
+        // Group by Day+Turn+Role to calculate counts
+        const aggregated = {};
+        uncoveredData.forEach(u => {
+            const key = `${u.giorno}|${u.turno}|${u.role}`;
+            if(!aggregated[key]) aggregated[key] = 0;
+            aggregated[key]++;
+        });
+
+        // Convert back to array for sorting/display
+        const displayList = Object.entries(aggregated).map(([key, count]) => {
+            const [giorno, turno, role] = key.split("|");
+            return { giorno, turno, role, count };
+        });
+        
         // Sort
         const daysOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
-        uncoveredData.sort((a,b) => daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno));
+        displayList.sort((a,b) => {
+             const dayDiff = daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno);
+             if(dayDiff !== 0) return dayDiff;
+             return a.turno.localeCompare(b.turno);
+        });
 
         let alertHtml = `<div class="uncovered-alert">
-            <h3>⚠️ ATTENZIONE: TURNI NON COPERTI</h3>
-            <p>I seguenti turni non hanno personale assegnato a causa di mancanza di disponibilità o ore insufficienti:</p>`;
+            <h3>⚠️ ATTENZIONE</h3>
+            <p>I seguenti turni risultano al momento scoperti:</p>
+            <div class="uncovered-grid">`;
         
-        for (const u of uncoveredData) {
-            alertHtml += `<div class="uncovered-item">❌ ${u.giorno} (${u.turno}): ${u.role}</div>`;
+        for (const u of displayList) {
+            alertHtml += `<div class="uncovered-item"><span class="icon">❌</span> ${u.giorno} | ${u.turno} | ${u.role} <span class="badge">${u.count} person${u.count == 1 ? "a" : "e"}</span></div>`;
         }
-        alertHtml += `</div>`;
+        alertHtml += `</div></div>`;
         div.innerHTML += alertHtml;
         
-        // Add to result for Excel export as a "Fake" worker
+        // Add to result for Excel export
         result["⚠ NON COPERTI"] = uncoveredData;
     }
 
     // 2. PRINT REAL WORKERS
     for (const worker of Object.keys(result)) {
-        if (worker === "⚠ NON COPERTI") continue; // Skip, already handled visibly
+        if (worker === "⚠ NON COPERTI") continue; 
         stampaTurni(worker, result[worker]);
     }
 }
@@ -233,7 +252,7 @@ function closegenerati() {
 }
 
 // ==========================================
-// EXCEL EXPORT
+// EXCEL EXPORT (IMPROVED)
 // ==========================================
 function exportScheduleToExcel() {
   if (typeof XLSX === 'undefined') {
@@ -242,7 +261,7 @@ function exportScheduleToExcel() {
   }
 
   const workersList = Object.keys(result);
-  // Ensure "NON COPERTI" is last if present
+  // Ensure "NON COPERTI" is last
   workersList.sort((a,b) => {
       if(a === "⚠ NON COPERTI") return 1;
       if(b === "⚠ NON COPERTI") return -1;
@@ -253,7 +272,7 @@ function exportScheduleToExcel() {
   
   const ws_data = [];
   
-  // 1. HEADER ROW
+  // HEADER
   const headerRow = [
       { v: "Giorno / Turno", s: { font: { bold: true }, fill: { fgColor: { rgb: "E0E0E0" } }, border: { bottom: { style: "thin" } } } }
   ];
@@ -278,10 +297,16 @@ function exportScheduleToExcel() {
   const weeklyTotalsWorker = {};
   workersList.forEach(w => weeklyTotalsWorker[w] = 0);
 
-  // 2. DATA ROWS
+  // DATA ROWS
   dayOrder.forEach(giorno => {
+      // Keep track of daily totals per person
+      const dailyTotalsWorker = {};
+      workersList.forEach(w => dailyTotalsWorker[w] = 0);
+      let dailyGrandTotal = 0;
+
+      // 1. Process Turns
       turnTypes.forEach((tt, idx) => {
-          let dayTotalHours = 0;
+          let rowTotalHours = 0;
           const row = [];
           
           const label = `${giorno} - ${tt.name}`;
@@ -302,32 +327,68 @@ function exportScheduleToExcel() {
               let cellStyle = { alignment: { horizontal: "center" }, border: { top: { style: isFirstTurn ? "medium" : "thin" }, left: { style: "thin" } } };
               
               if (task) {
-                  cellVal = `${task.role}`; 
-                  if (w !== "⚠ NON COPERTI") {
-                      dayTotalHours += task.ore;
-                      weeklyTotalsWorker[w] += task.ore;
-                      cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; 
-                  } else {
-                      // Highlight uncovered
+                  if (w === "⚠ NON COPERTI") {
+                      const allTasksForCell = result[w].filter(t => t.giorno === giorno && t.turno === tt.name);
+                      const roleCounts = {};
+                      allTasksForCell.forEach(t => roleCounts[t.role] = (roleCounts[t.role] || 0) + 1);
+                      const parts = Object.entries(roleCounts).map(([r, c]) => `${r} (${c})`);
+                      cellVal = parts.join(", ");
                       cellStyle.fill = { fgColor: { rgb: "FFCCCC" } };
                       cellStyle.font = { color: { rgb: "CC0000" }, bold: true };
+                  } else {
+                      cellVal = `${task.role}`; 
+                      rowTotalHours += task.ore;
+                      weeklyTotalsWorker[w] += task.ore;
+                      dailyTotalsWorker[w] += task.ore;
+                      dailyGrandTotal += task.ore;
+                      cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; 
                   }
               }
-              
               row.push({ v: cellVal, s: cellStyle });
           });
 
+          // Sum of the row (shift specific)
           row.push({ 
-              v: dayTotalHours > 0 ? dayTotalHours : "", 
+              v: rowTotalHours > 0 ? rowTotalHours : "", 
               t: 'n',
               s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "F0F0F0" } } } 
           });
 
           ws_data.push(row);
       });
+
+      // 2. Add Daily Summary Row
+      const summaryRow = [];
+      summaryRow.push({ 
+          v: `TOTALE ${giorno.toUpperCase()}`, 
+          s: { font: { bold: true, italic: true }, fill: { fgColor: { rgb: "D9D9D9" } }, border: { top: { style: "thin" } } } 
+      });
+
+      workersList.forEach(w => {
+           if(w === "⚠ NON COPERTI") {
+               summaryRow.push({ v: "", s: { fill: { fgColor: { rgb: "D9D9D9" } } } });
+           } else {
+               const dayTot = dailyTotalsWorker[w];
+               summaryRow.push({ 
+                   v: dayTot > 0 ? dayTot : "", 
+                   t: 'n', 
+                   s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "D9D9D9" } } } 
+               });
+           }
+      });
+
+      // Daily Grand Total
+      summaryRow.push({ 
+          v: dailyGrandTotal, 
+          t: 'n', 
+          s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "BFBFBF" } } } 
+      });
+
+      ws_data.push(summaryRow);
+      // Empty spacer row? Maybe not needed for compactness.
   });
 
-  // 3. FOOTER ROW
+  // FOOTER ROW (Weekly Totals)
   const totalRow = [
       { v: "TOTALE SETTIMANALE", s: { font: { bold: true }, fill: { fgColor: { rgb: "444444" } }, font: { color: { rgb: "FFFFFF" } } } }
   ];

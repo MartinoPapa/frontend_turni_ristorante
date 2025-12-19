@@ -54,8 +54,8 @@
     <div class="addworker" id="turntypespage" style="display:none;">
         <button class="btnClose" onclick="closeTurnTypes()"><img src="close.png" alt="Chiudi"></button>
         <article class="card config-turntypes-page" role="group" aria-label="Card turn types">
-            <h2>Configurazione Orari Turni</h2>
-            <p class="description">Definisci i nomi dei turni e i relativi orari (inizio - fine)</p>
+            <h2>Configurazione Orari</h2>
+            <p class="description">Definire i nomi dei turni e i relativi orari (inizio - fine)</p>
             
             <div id="turnTypesList"></div>
             
@@ -110,7 +110,7 @@
 
     <div class="addworker" id="datiGenerati">
         <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="Chiudi"></button>
-        <div>
+        <div style="min-width: 40%;">
             <h1>Turni generati con successo</h1>
             <div class="center">
                 <button onclick="exportScheduleToExcel()" class="scaricabtn">Download</button>

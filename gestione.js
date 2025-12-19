@@ -84,7 +84,6 @@ function renderTurnTypesEditor() {
     turnTypes.forEach((t, index) => {
         const row = document.createElement("div");
         row.className = "turn-type-row";
-        // REMOVED INLINE STYLE style="width:120px!important", ADDED CLASS input-turn-name
         row.innerHTML = `
             <input type="text" value="${t.name}" class="small-input turn-name input-turn-name" placeholder="Nome">
             <input type="time" value="${t.start}" class="time-input turn-start">
@@ -139,8 +138,6 @@ function saveTurnTypesAndClose() {
         const newName = newTypes[i].name;
 
         if (oldName && newName && oldName !== newName) {
-            console.log(`Renaming turn ${oldName} to ${newName}`);
-            
             workers.forEach(w => {
                 if (w.disponibilita) {
                     for (const day in w.disponibilita) {
@@ -164,7 +161,6 @@ function saveTurnTypesAndClose() {
 
     turnTypes = newTypes;
     closeTurnTypes();
-    
     renderWorkers(); 
     renderRoles();
     storeAll();
@@ -250,7 +246,7 @@ class Ruolo {
         <thead><tr><th>Giorno</th><th>Turno</th><th>Durata</th><th># Persone</th></tr></thead>
         <tbody>${shiftRows}</tbody>
       </table>
-      <div style="display:flex;gap:6px;justify-content:center; flex-wrap:wrap;" class="3trebottoni">
+      <div class="trebottoni">
         <button onclick="editRole(${this.index})">Modifica</button>
         <button onclick="duplicateRole(${this.index})" class="btn-duplicate">Duplica</button>
         <button onclick="eliminaRuolo(${this.index})">Elimina</button>
@@ -324,7 +320,6 @@ function renderAvailabilityTable(currentData = {}) {
     
     let headerHTML = "<tr><th></th>";
     turnTypes.forEach(t => {
-        // Changed inline style to class header-subtitle
         headerHTML += `<th>${t.name}<br><span class="header-subtitle">${t.start}-${t.end}</span></th>`;
     });
     headerHTML += "</tr>";
@@ -467,16 +462,35 @@ function clearAddRoleForm() {
 
 function createRoleFromInput() {
   const nome = document.getElementById("roleName").value.trim();
-  const shifts = [...document.querySelectorAll(".shift-row")].map(row => ({
-    giorno: row.querySelector(".day-select").value,
-    turno: row.querySelector(".turno-select").value,
-    persone: parseInt(row.querySelector(".persone-input").value, 10) || 1
-  }));
+  const shiftsRows = [...document.querySelectorAll(".shift-row")];
+  
+  // VALIDAZIONE DUPLICATI
+  const existingShifts = new Set();
+  const shifts = [];
+  
+  for (const row of shiftsRows) {
+      const giorno = row.querySelector(".day-select").value;
+      const turno = row.querySelector(".turno-select").value;
+      const persone = parseInt(row.querySelector(".persone-input").value, 10) || 1;
+      
+      const key = `${giorno}-${turno}`;
+      if (existingShifts.has(key)) {
+          alert(`Errore: Il turno "${giorno} ${turno}" è stato inserito due volte. Rimuovi il duplicato.`);
+          return null; // Interrompe la creazione
+      }
+      existingShifts.add(key);
+      
+      shifts.push({ giorno, turno, persone });
+  }
+
   return new Ruolo(nome, shifts);
 }
 
 function aggiungiRuoloEChiudi() {
   const ruolo = createRoleFromInput();
+  
+  if (ruolo === null) return; // Errore di duplicazione rilevato
+  
   if (!ruolo.nome || ruolo.shifts.length === 0)
     return alert("Completa nome e almeno un turno.");
   
