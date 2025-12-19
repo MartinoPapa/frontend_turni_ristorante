@@ -139,7 +139,7 @@ async function getSchedule() {
 
         if (!response.ok) {
             const text = await response.text();
-            alert("Impossibile generare i turni. Personale insufficiente");
+            alert("Impossibile generare i turni. Errore generico.");
             document.getElementById("btngenera").innerHTML = "Genera Turni";
             return;
         }
@@ -158,12 +158,16 @@ async function getSchedule() {
 let result = {};
 
 function stampa(data) {
-    document.getElementById("generated").innerHTML = "";
+    const div = document.getElementById("generated");
+    div.innerHTML = "";
     result = {};
     
+    let uncoveredData = null;
+
+    // Process assignments
     for (const [worker, info] of Object.entries(data.assignments)) {
-        result[worker] = [];
-        info.tasks.forEach(t => {
+        // Parse tasks
+        const parsedTasks = info.tasks.map(t => {
             const raw = t.shift;
             const parts = raw.split("-");
             const index = parts.pop();
@@ -171,9 +175,39 @@ function stampa(data) {
             const role = parts.join("-"); 
             
             const [giorno, turno] = dayTurn.split("/");
-            
-            result[worker].push({ role, giorno, turno, ore: t.hours });
+            return { role, giorno, turno, ore: t.hours };
         });
+
+        if (worker === "_UNCOVERED_") {
+            uncoveredData = parsedTasks;
+        } else {
+            result[worker] = parsedTasks;
+        }
+    }
+
+    // 1. PRINT UNCOVERED FIRST (If any)
+    if (uncoveredData && uncoveredData.length > 0) {
+        // Sort
+        const daysOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+        uncoveredData.sort((a,b) => daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno));
+
+        let alertHtml = `<div class="uncovered-alert">
+            <h3>⚠️ ATTENZIONE: TURNI NON COPERTI</h3>
+            <p>I seguenti turni non hanno personale assegnato a causa di mancanza di disponibilità o ore insufficienti:</p>`;
+        
+        for (const u of uncoveredData) {
+            alertHtml += `<div class="uncovered-item">❌ ${u.giorno} (${u.turno}): ${u.role}</div>`;
+        }
+        alertHtml += `</div>`;
+        div.innerHTML += alertHtml;
+        
+        // Add to result for Excel export as a "Fake" worker
+        result["⚠ NON COPERTI"] = uncoveredData;
+    }
+
+    // 2. PRINT REAL WORKERS
+    for (const worker of Object.keys(result)) {
+        if (worker === "⚠ NON COPERTI") continue; // Skip, already handled visibly
         stampaTurni(worker, result[worker]);
     }
 }
@@ -199,7 +233,7 @@ function closegenerati() {
 }
 
 // ==========================================
-// NEW EXCEL EXPORT (Replacing CSV)
+// EXCEL EXPORT
 // ==========================================
 function exportScheduleToExcel() {
   if (typeof XLSX === 'undefined') {
@@ -208,11 +242,14 @@ function exportScheduleToExcel() {
   }
 
   const workersList = Object.keys(result);
+  // Ensure "NON COPERTI" is last if present
+  workersList.sort((a,b) => {
+      if(a === "⚠ NON COPERTI") return 1;
+      if(b === "⚠ NON COPERTI") return -1;
+      return 0;
+  });
+
   const dayOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
-  
-  // Data Structure for the Sheet
-  // Row 1: Headers
-  // Columns: Day/Turn, ...Workers, Total Day
   
   const ws_data = [];
   
@@ -222,28 +259,31 @@ function exportScheduleToExcel() {
   ];
   
   workersList.forEach(w => {
-      headerRow.push({ v: w.toUpperCase(), s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "E0E0E0" } }, border: { bottom: { style: "thin" }, left: { style: "thin" } } } });
+      const isUncovered = (w === "⚠ NON COPERTI");
+      headerRow.push({ 
+          v: w.toUpperCase(), 
+          s: { 
+              font: { bold: true, color: { rgb: isUncovered ? "FF0000" : "000000" } }, 
+              alignment: { horizontal: "center" }, 
+              fill: { fgColor: { rgb: "E0E0E0" } }, 
+              border: { bottom: { style: "thin" }, left: { style: "thin" } } 
+          } 
+      });
   });
   
-  // Add Header for Daily Totals
   headerRow.push({ v: "TOTALE ORE", s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "444444" } }, alignment: { horizontal: "center" } } });
   
   ws_data.push(headerRow);
 
-  // Initialize sums for Weekly Totals per Worker
   const weeklyTotalsWorker = {};
   workersList.forEach(w => weeklyTotalsWorker[w] = 0);
 
   // 2. DATA ROWS
   dayOrder.forEach(giorno => {
-      // Create a section header or just group by borders? Let's iterate turns
       turnTypes.forEach((tt, idx) => {
           let dayTotalHours = 0;
-          
           const row = [];
           
-          // First Column: Day - Turn
-          // Visual separation: Bold day name only on first turn
           const label = `${giorno} - ${tt.name}`;
           const isFirstTurn = (idx === 0);
           
@@ -256,28 +296,27 @@ function exportScheduleToExcel() {
               } 
           });
 
-          // Worker Columns
           workersList.forEach(w => {
               const task = result[w].find(t => t.giorno === giorno && t.turno === tt.name);
               let cellVal = "";
               let cellStyle = { alignment: { horizontal: "center" }, border: { top: { style: isFirstTurn ? "medium" : "thin" }, left: { style: "thin" } } };
               
               if (task) {
-                  cellVal = `${task.role}`; // Just Role Name
-                  // Accumulate totals
-                  dayTotalHours += task.ore;
-                  weeklyTotalsWorker[w] += task.ore;
-                  
-                  // Highlight assigned cells
-                  cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; // Light Green
+                  cellVal = `${task.role}`; 
+                  if (w !== "⚠ NON COPERTI") {
+                      dayTotalHours += task.ore;
+                      weeklyTotalsWorker[w] += task.ore;
+                      cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; 
+                  } else {
+                      // Highlight uncovered
+                      cellStyle.fill = { fgColor: { rgb: "FFCCCC" } };
+                      cellStyle.font = { color: { rgb: "CC0000" }, bold: true };
+                  }
               }
               
               row.push({ v: cellVal, s: cellStyle });
           });
 
-          // Last Column: Total for this turn row (Staff hours)
-          // "Total hours of the day" usually means per row sum or sum of all turns in that day.
-          // Let's put the sum for this specific turn row here.
           row.push({ 
               v: dayTotalHours > 0 ? dayTotalHours : "", 
               t: 'n',
@@ -286,12 +325,9 @@ function exportScheduleToExcel() {
 
           ws_data.push(row);
       });
-      
-      // OPTIONAL: Add a "Daily Total" row separator if needed, but PDF implies compact rows.
-      // We will stick to the side column summing the specific turn hours.
   });
 
-  // 3. FOOTER ROW: Grand Totals per Worker
+  // 3. FOOTER ROW
   const totalRow = [
       { v: "TOTALE SETTIMANALE", s: { font: { bold: true }, fill: { fgColor: { rgb: "444444" } }, font: { color: { rgb: "FFFFFF" } } } }
   ];
@@ -299,16 +335,19 @@ function exportScheduleToExcel() {
   let grandTotalWeek = 0;
 
   workersList.forEach(w => {
-      const tot = weeklyTotalsWorker[w];
-      grandTotalWeek += tot;
-      totalRow.push({ 
-          v: tot, 
-          t: 'n',
-          s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "DDDDDD" } }, border: { top: { style: "double" } } } 
-      });
+      if (w === "⚠ NON COPERTI") {
+          totalRow.push({ v: "", s: { fill: { fgColor: { rgb: "DDDDDD" } } } });
+      } else {
+        const tot = weeklyTotalsWorker[w];
+        grandTotalWeek += tot;
+        totalRow.push({ 
+            v: tot, 
+            t: 'n',
+            s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "DDDDDD" } }, border: { top: { style: "double" } } } 
+        });
+      }
   });
 
-  // Bottom Right Corner: Total Hours of the whole week for everyone
   totalRow.push({ 
       v: grandTotalWeek, 
       t: 'n',
@@ -317,20 +356,16 @@ function exportScheduleToExcel() {
 
   ws_data.push(totalRow);
 
-  // GENERATE WORKBOOK
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-  // Set column widths
   const wscols = [
-      { wch: 25 }, // Day/Turn column
-      ...workersList.map(() => ({ wch: 15 })), // Worker columns
-      { wch: 15 } // Total column
+      { wch: 25 }, 
+      ...workersList.map(() => ({ wch: 15 })), 
+      { wch: 15 } 
   ];
   ws['!cols'] = wscols;
 
   XLSX.utils.book_append_sheet(wb, ws, "Turni");
-
-  // Export
   XLSX.writeFile(wb, "turni_ristorante.xlsx");
 }

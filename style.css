@@ -483,9 +483,8 @@ button{
 /* NUOVE CLASSI DI STANDARDIZZAZIONE PER MODALI CONFIG */
 /* ================================================== */
 
-/* 1. PAGINA MODIFICA/AGGIUNTA LAVORATORE */
 .config-worker-page {
-    font-size: 16px; /* Base standard */
+    font-size: 16px;
 }
 .config-worker-page p {
     margin: 10px 0 5px;
@@ -513,7 +512,6 @@ button{
     border-radius: 4px;
 }
 
-/* 2. PAGINA MODIFICA/AGGIUNTA RUOLO */
 .config-role-page {
     font-size: 16px;
 }
@@ -530,7 +528,6 @@ button{
     border-radius: 4px;
 }
 
-/* 3. PAGINA CONFIGURAZIONE TIPI DI TURNO */
 .config-turntypes-page {
     font-size: 16px;
 }
@@ -558,4 +555,22 @@ button{
 }
 .config-turntypes-page .input-turn-name {
     width: 120px !important;
+}
+
+/* NUOVO STILE: ALERT TURNI SCOPERTI */
+.uncovered-alert {
+    border: 2px solid #e74c3c;
+    background-color: #fdedec;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+.uncovered-alert h3 {
+    color: #c0392b;
+    margin-top: 0;
+}
+.uncovered-item {
+    color: #c0392b;
+    font-weight: bold;
+    margin: 5px 0;
 }
