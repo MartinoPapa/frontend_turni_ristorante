@@ -1,136 +1,133 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shiftly</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
-
 <body>
-    <img src="logo.jpg" id="logo">
-    
+    <img src="logo.jpg" id="logo" alt="Logo">
     <div class="addworker" id="addworkerpage">
-        <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card config-worker-page" role="group" aria-label="Card add lavoratore">
+        <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="X"></button>
+        <article class="config-worker-page">
             <p>Nome</p>
-            <input id="nome" type="text" value="">
+            <input id="nome" type="text" placeholder="nome del lavoratore">
             <p>Ruoli</p>
             <div id="ruoloSelectContainer"></div>
-
             <p>Disponibilità</p>
-            <div class="table-responsive">
-                <table class="schedule-table" id="scheduleTable">
-                    <thead></thead>
-                    <tbody></tbody>
-                </table>
+            <div style="overflow-x:auto">
+                <table class="schedule-table" id="scheduleTable"><thead></thead><tbody></tbody></table>
             </div>
-
             <p>Ore settimanali</p>
-            <input id="maxOreInput" type="number" min="0" step="1" placeholder="">
-
-            <button id="btnadd" onclick="aggiungiEChiudi()">SALVA</button>
+            <input id="maxOreInput" type="number" placeholder="massimo  numero di ore settimanali">
+            <button onclick="aggiungiEChiudi()" class="btn-save">SALVA</button>
         </article>
     </div>
 
-    <div class="addworker" id="addrolepage" style="display:none;">
-        <button class="btnClose" onclick="closerole()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card config-role-page" role="group" aria-label="Card add ruolo">
+    <div class="addworker" id="addrolepage">
+        <button class="btnClose" onclick="closerole()"><img src="close.png" alt="X"></button>
+        <article class="config-role-page">
             <p>Ruolo</p>
-            <input id="roleName" type="text" value="" placeholder="inserire il nome del ruolo">
+            <input id="roleName" type="text" placeholder="nome del ruolo">
             <p>Turni Richiesti</p>
-            <div class="shift-header-label">
-                <span>Giorno</span>
-                <span>Turno</span>
-                <span>Persone</span>
-            </div>
             <div id="roleShiftsContainer"></div>
-            <button class="add-btn" onclick="addShiftRow()" id="add-turno">Aggiungi turno</button>
-            <button id="btnAddRole" onclick="aggiungiRuoloEChiudi()">SALVA</button>
+            <button onclick="addShiftRow()" class="btn-centered-small">+ Aggiungi turno</button>
+            <button onclick="aggiungiRuoloEChiudi()" class="btn-save">SALVA</button>
         </article>
     </div>
 
-    <div class="addworker" id="turntypespage" style="display:none;">
-        <button class="btnClose" onclick="closeTurnTypes()"><img src="close.png" alt="Chiudi"></button>
-        <article class="card config-turntypes-page" role="group" aria-label="Card turn types">
-            <h2>Configurazione Orari</h2>
-            <p class="description">Definire i nomi dei turni e i relativi orari (inizio - fine)</p>
-            
+    <div class="addworker" id="turntypespage">
+        <button class="btnClose" onclick="closeTurnTypes()"><img src="close.png" alt="X"></button>
+        <article class="config-turntypes-page">
+            <h2 style="margin-bottom: 0;">Configurazione turni</h2>
+            <p style="margin-top: 0.2rem;">Inserire turni e orari corrispondenti</p>
             <div id="turnTypesList"></div>
-            
-            <button class="add-btn btn-add-custom" onclick="addTurnTypeRow()">+ Aggiungi Tipologia</button>
-            <button id="btnSaveTurnTypes" class="btn-save-custom" onclick="saveTurnTypesAndClose()">Salva</button>
+            <button onclick="addTurnTypeRow()" class="btn-centered-small">+ Aggiungi Tipologia</button>
+            <button onclick="saveTurnTypesAndClose()" class="btn-save">SALVA</button>
         </article>
     </div>
 
-    <div class="addworker" id="loginpage">
-        <article class="card" role="group" aria-label="Card login">
-            <h2>Inserire il codice associato al vostro ristorante</h2>
-            <input placeholder="codice ristorante" id="codice" value="">
-            <button onclick="login()" id="logbutton">Login</button>
-            <p>In caso di codice dimenticato, contattare <span>martino.papa.tn@gmail.com</span></p>
+    <div class="addworker" id="loginpage" style="display:flex">
+        <article class="login-card">
+            <div class="login-header">
+                <h1>Shiftly</h1>
+                <p class="app-desc">
+                    Gestisci i turni del tuo personale in modo semplice e intelligente. 
+                    Organizza gli orari, evita conflitti e ottimizza la produttività.
+                </p>
+            </div>
+
+            <div class="login-body">
+                <input id="codice" type="password" placeholder="Inserisci codice accesso" class="login-input">
+                <button onclick="login()" id="logbutton" class="btn-login">ACCEDI</button>
+            </div>
+
+            <div class="login-footer">
+                <p class="trial-text">Non hai ancora un account? <strong>Richiedi una prova gratuita</strong></p>
+                <div class="contact-links">
+                    <a href="#" onclick="copyEmail(event, 'info@shiftly.app')" class="contact-item email" title="Clicca per copiare">
+                        <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i> 
+                        <span id="emailLabel">martino.papa.tn@gmail.com</span>
+                    </a>
+                    <a href="https://wa.me/3938885176" target="_blank" class="contact-item whatsapp">
+                        <i class="fa-brands fa-whatsapp" style="font-size: 1.2em;"></i> +39 393 888 5176
+                    </a>
+                </div>
+            </div>
         </article>
     </div>
 
     <div class="container">
-        <h1>Gestionale <span>La Torre</span></h1>
-
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
-
+        <h1 id="Title">Shiftly</h1>
+        <p class="powered">powered by Shiftly</p>
+        
         <div class="section-header">
             <h2>Ruoli e Turni</h2>
             <div>
-                <button class="add-btn" onclick="openTurnTypes()">+ Gestisci Turni</button>
-                <button class="add-btn" onclick="openrole()">+ Aggiungi ruolo</button>
+                <button class="add-btn" onclick="openTurnTypes()">⚙ Turni</button>
+                <button class="add-btn" onclick="openrole()">+ Ruolo</button>
             </div>
         </div>
     </div>
-
-    <div class="ruoli-wrapper" id="ruoliWrapper">
-        </div>
+    <div class="ruoli-wrapper" id="ruoliWrapper"></div>
 
     <div class="container">
         <div class="section-header">
             <h2>Personale</h2>
-            <button class="add-btn" onclick="openworker()">+ Aggiungi lavoratore</button>
+            <button class="add-btn" onclick="openworker()">+ Personale</button>
         </div>
     </div>
-
-    <div class="slider-wrap" aria-label="Card slider example">
-        <div class="slider-viewport" id="viewport" tabindex="0" aria-roledescription="carousel">
-            <div class="slider-track" id="track">
-                </div>
-        </div>
+    <div class="slider-wrap">
+        <div class="slider-viewport"><div class="slider-track" id="track"></div></div>
     </div>
 
     <div class="genera">
         <button onclick="getSchedule()" id="btngenera">Genera Turni</button>
     </div>
 
-    <div class="addworker" id="datiGenerati">
-        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="Chiudi"></button>
-        <div style="min-width: 40%;">
-            <h1>Turni generati con successo</h1>
-            <div class="center">
-                <button onclick="exportScheduleToExcel()" class="scaricabtn">Download</button>
+    <div class="addworker" id="datiGenerati" style="background:rgba(0,0,0,0.9);">
+        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="X"></button>
+        <article style="max-width:95%; background:#f4f4f4; height:95%">
+            <div class="generated-header">
+                <h2 style="margin:0">Turni generati con successo</h2>
+                <button onclick="exportScheduleToExcel()" class="scaricabtn">📥 Scarica Excel</button>
             </div>
+            
             <div id="generated"></div>
-        </div>
+        </article>
     </div>
-
     <div class="footer">
         <div class="local-save-controls">
-            <h3>Salvataggio dati in locale</h3>
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button class="scaricabtn" onclick="saveLocal()">Salva</button>
-                <input type="file" id="fileInput" style="display:none" onchange="loadLocal(this)">
-                <button class="scaricabtn" onclick="document.getElementById('fileInput').click()">Carica</button>
-            </div>
+            <h3>Backup locale</h3>
+            <button class="scaricabtn" onclick="saveLocal()">Salva</button>
+            <button class="scaricabtn" onclick="document.getElementById('fileInput').click()">Carica</button>
+            <input type="file" id="fileInput" style="display:none" onchange="loadLocal(this)">
         </div>
-        <br>
-        <p> Developed by Martino Papa - 2025 </p>
-        <p>martino.papa.tn@gmail.com <br> +39 393 888 5176 </p>
+        <p>Shiftly 2025</p>
     </div>
 
     <script src="gestione.js"></script>

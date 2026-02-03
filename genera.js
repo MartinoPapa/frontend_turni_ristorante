@@ -121,6 +121,7 @@ async function getSchedule() {
     generaSets();
 
     payload = {
+        "key": psw, // INVIO DELLA PASSWORD (SICUREZZA MANTENUTA)
         "workers": workers_id,
         "shifts": shifts,
         "H": hoursPerShift,
@@ -138,8 +139,9 @@ async function getSchedule() {
         });
 
         if (!response.ok) {
-            const text = await response.text();
-            alert("Impossibile generare i turni. Errore generico.");
+            const errData = await response.json().catch(() => ({}));
+            const msg = errData.error || "Impossibile generare i turni. Errore generico.";
+            alert(msg);
             document.getElementById("btngenera").innerHTML = "Genera Turni";
             return;
         }
@@ -151,12 +153,16 @@ async function getSchedule() {
 
     } catch (err) {
         console.error("Error fetching schedule:", err);
+        alert("Errore di connessione al server.");
         document.getElementById("btngenera").innerHTML = "Genera Turni";
     }
 }
 
 let result = {};
 
+// ==========================================
+// STAMPA (LAYOUT GRIGLIA RIPRISTINATO)
+// ==========================================
 function stampa(data) {
     const div = document.getElementById("generated");
     div.innerHTML = "";
@@ -166,7 +172,6 @@ function stampa(data) {
 
     // Process assignments
     for (const [worker, info] of Object.entries(data.assignments)) {
-        // Parse tasks
         const parsedTasks = info.tasks.map(t => {
             const raw = t.shift;
             const parts = raw.split("-");
@@ -185,9 +190,8 @@ function stampa(data) {
         }
     }
 
-    // 1. PRINT UNCOVERED FIRST (If any)
+    // 1. GESTIONE NON COPERTI
     if (uncoveredData && uncoveredData.length > 0) {
-        // Group by Day+Turn+Role to calculate counts
         const aggregated = {};
         uncoveredData.forEach(u => {
             const key = `${u.giorno}|${u.turno}|${u.role}`;
@@ -195,13 +199,11 @@ function stampa(data) {
             aggregated[key]++;
         });
 
-        // Convert back to array for sorting/display
         const displayList = Object.entries(aggregated).map(([key, count]) => {
             const [giorno, turno, role] = key.split("|");
             return { giorno, turno, role, count };
         });
         
-        // Sort
         const daysOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
         displayList.sort((a,b) => {
              const dayDiff = daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno);
@@ -210,41 +212,69 @@ function stampa(data) {
         });
 
         let alertHtml = `<div class="uncovered-alert">
-            <h3>⚠️ ATTENZIONE</h3>
-            <p>I seguenti turni risultano al momento scoperti:</p>
+            <h3>Personale mancante:</h3>
             <div class="uncovered-grid">`;
         
         for (const u of displayList) {
-            alertHtml += `<div class="uncovered-item"><span class="icon">❌</span> ${u.giorno} | ${u.turno} | ${u.role} <span class="badge">${u.count} person${u.count == 1 ? "a" : "e"}</span></div>`;
+            alertHtml += `<div class="uncovered-item">
+                <span class="badg-day">${u.giorno}</span>
+                <span class="badg-turn">${u.turno}</span>
+                <span class="badg-role">${u.role}</span>
+                <span class="badg-count">${u.count} Mancant${u.count === 1 ? 'e' : 'i'}</span>
+            </div>`;
         }
         alertHtml += `</div></div>`;
         div.innerHTML += alertHtml;
-        
-        // Add to result for Excel export
         result["⚠ NON COPERTI"] = uncoveredData;
     }
 
-    // 2. PRINT REAL WORKERS
-    for (const worker of Object.keys(result)) {
-        if (worker === "⚠ NON COPERTI") continue; 
-        stampaTurni(worker, result[worker]);
-    }
-}
-
-function stampaTurni(worker, dati) {
-    div = document.getElementById("generated");
-    let text = `<h3>Turni per ${worker}:</h3>`;
-    let oreTotali = 0;
-    
+    // 2. STAMPA LAVORATORI (LAYOUT A GRIGLIA)
     const daysOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
-    dati.sort((a,b) => daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno));
+    
+    for (const worker of Object.keys(result)) {
+        if (worker === "⚠ NON COPERTI") continue;
+        
+        let workerTasks = result[worker];
+        let totOre = workerTasks.reduce((acc, curr) => acc + curr.ore, 0);
 
-    for (const entry of dati) {
-        text += `<p><strong>${entry.giorno}</strong> (${entry.turno}): ${entry.role} <small>(${entry.ore}h)</small></p>`;
-        oreTotali += entry.ore;
+        // Creiamo la card del lavoratore
+        let cardHtml = `
+        <div class="worker-report-card">
+            <div class="worker-header">
+                <h3>${worker}</h3>
+                <span class="total-badge">${totOre} ore</span>
+            </div>
+            <div class="week-grid">`;
+
+        // Iteriamo i giorni per creare le caselle
+        daysOrder.forEach(day => {
+            const dailyTasks = workerTasks.filter(t => t.giorno === day);
+            dailyTasks.sort((a,b) => a.turno.localeCompare(b.turno));
+
+            let dayContent = "";
+            if (dailyTasks.length > 0) {
+                dailyTasks.forEach(t => {
+                    dayContent += `<div class="shift-chip">
+                        <span class="s-turn">${t.turno}</span>
+                        <span class="s-role">${t.role}</span>  
+                        <span class="s-hours">${turnTypes.find(tt => tt.name === t.turno).start} - ${turnTypes.find(tt => tt.name === t.turno).end}</span>
+                    </div>`;
+                });
+                cardHtml += `<div class="day-box active">
+                    <div class="day-name">${day}</div>
+                    <div class="day-shifts">${dayContent}</div>
+                </div>`;
+            } else {
+                cardHtml += `<div class="day-box empty">
+                    <div class="day-name">${day}</div>
+                    <div class="day-shifts">-</div>
+                </div>`;
+            }
+        });
+
+        cardHtml += `</div></div>`; // Chiusura week-grid e card
+        div.innerHTML += cardHtml;
     }
-    text += `<p><strong>Ore totali: ${oreTotali}</strong></p><hr>`;
-    div.innerHTML += text;
 }
 
 function closegenerati() {
@@ -252,179 +282,342 @@ function closegenerati() {
 }
 
 // ==========================================
-// EXCEL EXPORT (IMPROVED)
+// EXCEL EXPORT (DESIGN PULITO + TOTALI COORDINATI)
 // ==========================================
 function exportScheduleToExcel() {
   if (typeof XLSX === 'undefined') {
-      alert("Libreria Excel non caricata correttamente.");
+      alert("Errore: Libreria SheetJS (XLSX) non caricata.");
       return;
   }
 
-  const workersList = Object.keys(result);
-  // Ensure "NON COPERTI" is last
-  workersList.sort((a,b) => {
-      if(a === "⚠ NON COPERTI") return 1;
-      if(b === "⚠ NON COPERTI") return -1;
-      return 0;
-  });
+  // --- HELPER: Indici e Formati ---
+  function getColLetter(colIndex) {
+      let letter = "";
+      colIndex++; 
+      while (colIndex > 0) {
+          let mod = (colIndex - 1) % 26;
+          letter = String.fromCharCode(65 + mod) + letter;
+          colIndex = Math.floor((colIndex - mod) / 26);
+      }
+      return letter;
+  }
 
-  const dayOrder = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+  function getCellRef(rowIndex, colIndex) {
+      return getColLetter(colIndex) + (rowIndex + 1);
+  }
+
+  function timeToExcelSerial(timeStr) {
+      if (!timeStr || typeof timeStr !== 'string') return 0;
+      const [h, m] = timeStr.split(":").map(Number);
+      return (h / 24) + (m / 1440);
+  }
+
+  const getTimes = (turnName) => {
+      const tt = turnTypes.find(x => x.name === turnName);
+      return tt ? { start: tt.start, end: tt.end } : { start: "00:00", end: "00:00" };
+  };
+
+  // --- STILI (Palette Colori Migliorata) ---
+  const styleBorder = { top: {style:"thin"}, bottom: {style:"thin"}, left: {style:"thin"}, right: {style:"thin"} };
   
-  const ws_data = [];
+  // Colore condiviso per i totali (Grigio Medio)
+  const TOTAL_COLOR = { rgb: "D9D9D9" }; 
   
-  // HEADER
-  const headerRow = [
-      { v: "Giorno / Turno", s: { font: { bold: true }, fill: { fgColor: { rgb: "E0E0E0" } }, border: { bottom: { style: "thin" } } } }
-  ];
+  const styles = {
+      // Header: Blu Scuro, Testo Bianco (Molto leggibile)
+      header: { 
+          font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } }, 
+          fill: { fgColor: { rgb: "44546A" } }, // Dark Slate Blue
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" } 
+      },
+      // Giorno: Grigio/Blu molto chiaro
+      dayCol: { 
+          font: { bold: true, sz: 11 }, 
+          fill: { fgColor: { rgb: "E7E6E6" } }, 
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center", wrapText: true } 
+      },
+      // Ruolo: Azzurro Pastello
+      role: { 
+          font: { bold: true, sz: 10, color: { rgb: "000000" } }, 
+          fill: { fgColor: { rgb: "DDEBF7" } }, 
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" } 
+      }, 
+      // Orario: Bianco pulito con formato ora
+      time: { 
+          numFmt: "hh:mm", 
+          font: { sz: 10 }, 
+          fill: { fgColor: { rgb: "FFFFFF" } }, 
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" } 
+      },
+      // Riposo: Giallo chiaro neutro
+      rest: { 
+          font: { italic: true, color: { rgb: "555555" } }, 
+          fill: { fgColor: { rgb: "FFF2CC" } }, 
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" } 
+      },
+      // Scoperti: Rosso chiaro
+      uncovered: { 
+          font: { bold: true, color: { rgb: "9C0006" } }, // Dark Red Text
+          fill: { fgColor: { rgb: "FFC7CE" } }, // Light Red Fill
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" } 
+      },
+      // Totale Generico (Cella vuota nella colonna totale)
+      totalColEmpty: {
+          fill: { fgColor: TOTAL_COLOR },
+          border: styleBorder
+      },
+      // Riga/Colonna Totale (Numeri)
+      total: { 
+          font: { bold: true }, 
+          fill: { fgColor: TOTAL_COLOR }, 
+          border: styleBorder, 
+          alignment: { horizontal: "center", vertical: "center" }, 
+          numFmt: "0.00" 
+      },
+      // Totale Settimanale (Footer) - Leggermente più scuro per stacco visivo
+      totalFooter: { 
+          font: { bold: true, color: { rgb: "000000" } }, 
+          fill: { fgColor: TOTAL_COLOR }, // Mantiene lo stesso colore come richiesto
+          border: { top: {style:"medium"}, bottom: {style:"medium"}, left: {style:"thin"}, right: {style:"thin"} }, 
+          alignment: { horizontal: "center", vertical: "center" }, 
+          numFmt: "0.00" 
+      },
+      // Incrocio Totale (Angolo in basso a destra)
+      grandTotal: { 
+          font: { bold: true, sz: 12, color: { rgb: "000000" } }, 
+          fill: { fgColor: { rgb: "BFBFBF" } }, // Appena più scuro per l'angolo finale
+          border: { top: {style:"medium"}, bottom: {style:"medium"}, left: {style:"thin"}, right: {style:"thin"} }, 
+          alignment: { horizontal: "center", vertical: "center" }, 
+          numFmt: "0.00" 
+      }
+  };
+
+  // --- PREPARAZIONE DATI ---
+  const realWorkers = Object.keys(result).filter(k => 
+      k && k !== "⚠ NON COPERTI" && k !== "undefined" && k !== "null" && String(k).trim().length > 0
+  ).sort();
+
+  const uncoveredKey = "⚠ NON COPERTI";
+  const hasUncovered = result[uncoveredKey] && Array.isArray(result[uncoveredKey]) && result[uncoveredKey].length > 0;
+
+  // Mappa Colonne
+  const colMap = { "GIORNO": 0 };
+  let colIndex = 1;
+  realWorkers.forEach(w => { colMap[w] = colIndex++; });
+  if (hasUncovered) { colMap["SCOPERTI"] = colIndex++; }
+  colMap["TOTALE"] = colIndex;
+
+  const totalCols = colIndex + 1;
+  const ws_data = []; 
+  const merges = []; 
+
+  // Helper creazione righe: Applica automaticamente lo stile Totale all'ultima colonna
+  const createEmptyRow = () => {
+      const row = [];
+      for(let i=0; i<totalCols; i++) {
+          // Se è l'ultima colonna, usa lo sfondo del totale (anche se vuota)
+          if (i === colMap["TOTALE"]) {
+              row.push({ v: "", s: styles.totalColEmpty });
+          } else {
+              row.push({ v: "", s: styleBorder });
+          }
+      }
+      return row;
+  };
+
+  // --- HEADER ---
+  const headerRow = [];
+  // Creazione manuale header per gestire stili diversi
+  for(let i=0; i<totalCols; i++) headerRow.push({ v: "", s: styles.header });
   
-  workersList.forEach(w => {
-      const isUncovered = (w === "⚠ NON COPERTI");
-      headerRow.push({ 
-          v: w.toUpperCase(), 
-          s: { 
-              font: { bold: true, color: { rgb: isUncovered ? "FF0000" : "000000" } }, 
-              alignment: { horizontal: "center" }, 
-              fill: { fgColor: { rgb: "E0E0E0" } }, 
-              border: { bottom: { style: "thin" }, left: { style: "thin" } } 
-          } 
-      });
+  Object.keys(colMap).forEach(key => {
+      headerRow[colMap[key]] = { v: key, s: styles.header };
   });
-  
-  headerRow.push({ v: "TOTALE ORE", s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "444444" } }, alignment: { horizontal: "center" } } });
-  
+  // Sovrascrivi stile header ultima colonna per coerenza o lascialo scuro? Lasciamolo scuro (header style)
   ws_data.push(headerRow);
 
-  const weeklyTotalsWorker = {};
-  workersList.forEach(w => weeklyTotalsWorker[w] = 0);
+  const workerDailyTotalRefs = {}; 
+  realWorkers.forEach(w => workerDailyTotalRefs[w] = []);
+  const grandDailyTotalRefs = [];
 
-  // DATA ROWS
-  dayOrder.forEach(giorno => {
-      // Keep track of daily totals per person
-      const dailyTotalsWorker = {};
-      workersList.forEach(w => dailyTotalsWorker[w] = 0);
-      let dailyGrandTotal = 0;
+  // --- LOOP GIORNI ---
+  const days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
 
-      // 1. Process Turns
-      turnTypes.forEach((tt, idx) => {
-          let rowTotalHours = 0;
-          const row = [];
-          
-          const label = `${giorno} - ${tt.name}`;
-          const isFirstTurn = (idx === 0);
-          
-          row.push({ 
-              v: label, 
-              s: { 
-                  font: { bold: isFirstTurn }, 
-                  fill: { fgColor: { rgb: isFirstTurn ? "F9F9F9" : "FFFFFF" } },
-                  border: { top: { style: isFirstTurn ? "medium" : "thin" } }
-              } 
+  days.forEach(giorno => {
+      // 1. Dati Scoperti
+      let uncoveredGrouped = [];
+      if (hasUncovered) {
+          const raw = (result[uncoveredKey] || []).filter(t => t.giorno === giorno);
+          const map = {};
+          raw.forEach(u => {
+              const k = u.turno + "|" + u.role;
+              if(!map[k]) map[k] = { ...u, count: 0 };
+              map[k].count++;
           });
+          uncoveredGrouped = Object.values(map).sort((a,b) => getTimes(a.turno).start.localeCompare(getTimes(b.turno).start));
+      }
 
-          workersList.forEach(w => {
-              const task = result[w].find(t => t.giorno === giorno && t.turno === tt.name);
-              let cellVal = "";
-              let cellStyle = { alignment: { horizontal: "center" }, border: { top: { style: isFirstTurn ? "medium" : "thin" }, left: { style: "thin" } } };
-              
-              if (task) {
-                  if (w === "⚠ NON COPERTI") {
-                      const allTasksForCell = result[w].filter(t => t.giorno === giorno && t.turno === tt.name);
-                      const roleCounts = {};
-                      allTasksForCell.forEach(t => roleCounts[t.role] = (roleCounts[t.role] || 0) + 1);
-                      const parts = Object.entries(roleCounts).map(([r, c]) => `${r} (${c})`);
-                      cellVal = parts.join(", ");
-                      cellStyle.fill = { fgColor: { rgb: "FFCCCC" } };
-                      cellStyle.font = { color: { rgb: "CC0000" }, bold: true };
-                  } else {
-                      cellVal = `${task.role}`; 
-                      rowTotalHours += task.ore;
-                      weeklyTotalsWorker[w] += task.ore;
-                      dailyTotalsWorker[w] += task.ore;
-                      dailyGrandTotal += task.ore;
-                      cellStyle.fill = { fgColor: { rgb: "E6FFE6" } }; 
-                  }
-              }
-              row.push({ v: cellVal, s: cellStyle });
-          });
-
-          // Sum of the row (shift specific)
-          row.push({ 
-              v: rowTotalHours > 0 ? rowTotalHours : "", 
-              t: 'n',
-              s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "F0F0F0" } } } 
-          });
-
-          ws_data.push(row);
+      // 2. Calcolo Altezza
+      let maxWorkerShifts = 0;
+      realWorkers.forEach(w => {
+          const count = (result[w] || []).filter(t => t.giorno === giorno).length;
+          if (count > maxWorkerShifts) maxWorkerShifts = count;
       });
 
-      // 2. Add Daily Summary Row
+      const rowsForWorkers = maxWorkerShifts * 3;
+      const rowsForUncovered = uncoveredGrouped.length;
+      let rowsNeeded = Math.max(rowsForWorkers, rowsForUncovered);
+      if (rowsNeeded === 0) rowsNeeded = 1;
+
+      const startRow = ws_data.length;
+
+      // 3. Allocazione Righe
+      for(let i=0; i<rowsNeeded; i++) ws_data.push(createEmptyRow());
+
+      // 4. Colonna Giorno
+      ws_data[startRow][0] = { v: giorno.toUpperCase(), s: styles.dayCol };
+      merges.push({ s: {r: startRow, c: 0}, e: {r: startRow + rowsNeeded - 1, c: 0} });
+
+      const rowDailyTotalRefs = []; 
+
+      // 5. Lavoratori
+      realWorkers.forEach(w => {
+          const cIdx = colMap[w];
+          const tasks = (result[w] || []).filter(t => t.giorno === giorno);
+          tasks.sort((a,b) => getTimes(a.turno).start.localeCompare(getTimes(b.turno).start));
+
+          const timePairsRefs = [];
+
+          if (tasks.length === 0) {
+              ws_data[startRow][cIdx] = { v: "Riposo", s: styles.rest };
+              for(let r=1; r<rowsNeeded; r++) ws_data[startRow + r][cIdx].s = styles.rest;
+              merges.push({ s: {r: startRow, c: cIdx}, e: {r: startRow + rowsNeeded - 1, c: cIdx} });
+          } else {
+              tasks.forEach((task, index) => {
+                  const rBase = startRow + (index * 3);
+                  const times = getTimes(task.turno);
+
+                  ws_data[rBase][cIdx] = { v: task.role, s: styles.role };
+                  
+                  ws_data[rBase+1][cIdx] = { 
+                      v: timeToExcelSerial(times.start), t: 'n', s: styles.time 
+                  };
+                  ws_data[rBase+2][cIdx] = { 
+                      v: timeToExcelSerial(times.end), t: 'n', s: styles.time 
+                  };
+
+                  timePairsRefs.push({
+                      start: getCellRef(rBase+1, cIdx),
+                      end: getCellRef(rBase+2, cIdx)
+                  });
+              });
+          }
+          
+          if(!this.dailyFormulasMap) this.dailyFormulasMap = {};
+          this.dailyFormulasMap[w] = timePairsRefs;
+      });
+
+      // 6. Scoperti
+      if (hasUncovered && uncoveredGrouped.length > 0) {
+          const cIdx = colMap["SCOPERTI"];
+          uncoveredGrouped.forEach((item, index) => {
+              const rBase = startRow + index;
+              const label = `${item.turno} | ${item.role} | ${item.count}`;
+              ws_data[rBase][cIdx] = { v: label, s: styles.uncovered };
+          });
+      }
+
+      // 7. RIGA RIEPILOGO GIORNALIERO
+      // Creiamo una riga dove TUTTE le celle hanno lo stile 'total' per continuità visiva
       const summaryRow = [];
-      summaryRow.push({ 
-          v: `TOTALE ${giorno.toUpperCase()}`, 
-          s: { font: { bold: true, italic: true }, fill: { fgColor: { rgb: "D9D9D9" } }, border: { top: { style: "thin" } } } 
+      for(let i=0; i<totalCols; i++) summaryRow.push({ v: "", s: styles.total });
+      
+      const summaryRowIndex = ws_data.length;
+
+      summaryRow[0] = { v: "TOT. " + giorno.substr(0,3).toUpperCase(), s: styles.total };
+
+      realWorkers.forEach(w => {
+          const cIdx = colMap[w];
+          const timePairs = this.dailyFormulasMap[w];
+          
+          if (timePairs && timePairs.length > 0) {
+              const parts = timePairs.map(p => `MOD(${p.end}-${p.start},1)`);
+              const formula = `(${parts.join("+")})*24`;
+              
+              summaryRow[cIdx] = { t: 'n', f: formula, s: styles.total };
+              workerDailyTotalRefs[w].push(getCellRef(summaryRowIndex, cIdx));
+              rowDailyTotalRefs.push(getCellRef(summaryRowIndex, cIdx));
+          } else {
+              summaryRow[cIdx] = { v: "-", s: styles.total };
+          }
       });
 
-      workersList.forEach(w => {
-           if(w === "⚠ NON COPERTI") {
-               summaryRow.push({ v: "", s: { fill: { fgColor: { rgb: "D9D9D9" } } } });
-           } else {
-               const dayTot = dailyTotalsWorker[w];
-               summaryRow.push({ 
-                   v: dayTot > 0 ? dayTot : "", 
-                   t: 'n', 
-                   s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "D9D9D9" } } } 
-               });
-           }
-      });
+      if (hasUncovered) {
+          summaryRow[colMap["SCOPERTI"]] = { v: "-", s: styles.total };
+      }
 
-      // Daily Grand Total
-      summaryRow.push({ 
-          v: dailyGrandTotal, 
-          t: 'n', 
-          s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "BFBFBF" } } } 
-      });
+      // Totale Generale Giorno (Ultima colonna)
+      const totalColIdx = colMap["TOTALE"];
+      if (rowDailyTotalRefs.length > 0) {
+          summaryRow[totalColIdx] = {
+              t: 'n',
+              f: `SUM(${rowDailyTotalRefs.join(",")})`,
+              s: styles.total // Stesso colore del resto della riga
+          };
+          grandDailyTotalRefs.push(getCellRef(summaryRowIndex, totalColIdx));
+      } else {
+          summaryRow[totalColIdx] = { v: 0, s: styles.total };
+      }
 
       ws_data.push(summaryRow);
-      // Empty spacer row? Maybe not needed for compactness.
+      this.dailyFormulasMap = {}; 
   });
 
-  // FOOTER ROW (Weekly Totals)
-  const totalRow = [
-      { v: "TOTALE SETTIMANALE", s: { font: { bold: true }, fill: { fgColor: { rgb: "444444" } }, font: { color: { rgb: "FFFFFF" } } } }
-  ];
-  
-  let grandTotalWeek = 0;
+  // --- FOOTER SETTIMANALE ---
+  const footerRow = [];
+  for(let i=0; i<totalCols; i++) footerRow.push({ v: "", s: styles.totalFooter });
 
-  workersList.forEach(w => {
-      if (w === "⚠ NON COPERTI") {
-          totalRow.push({ v: "", s: { fill: { fgColor: { rgb: "DDDDDD" } } } });
+  footerRow[0] = { v: "TOTALE", s: styles.totalFooter };
+
+  realWorkers.forEach(w => {
+      const cIdx = colMap[w];
+      const refs = workerDailyTotalRefs[w];
+      if (refs.length > 0) {
+          footerRow[cIdx] = { t: 'n', f: `SUM(${refs.join(",")})`, s: styles.totalFooter };
       } else {
-        const tot = weeklyTotalsWorker[w];
-        grandTotalWeek += tot;
-        totalRow.push({ 
-            v: tot, 
-            t: 'n',
-            s: { font: { bold: true }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "DDDDDD" } }, border: { top: { style: "double" } } } 
-        });
+          footerRow[cIdx] = { v: 0, t: 'n', s: styles.totalFooter };
       }
   });
 
-  totalRow.push({ 
-      v: grandTotalWeek, 
-      t: 'n',
-      s: { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" }, fill: { fgColor: { rgb: "FFD700" } }, border: { top: { style: "double" } } } 
-  });
+  if (grandDailyTotalRefs.length > 0) {
+      footerRow[colMap["TOTALE"]] = {
+          t: 'n',
+          f: `SUM(${grandDailyTotalRefs.join(",")})`,
+          s: styles.grandTotal // Unico punto diverso (angolo)
+      };
+  } else {
+      footerRow[colMap["TOTALE"]] = { v: 0, s: styles.grandTotal };
+  }
 
-  ws_data.push(totalRow);
+  ws_data.push(footerRow);
 
+  // --- EXPORT ---
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-  const wscols = [
-      { wch: 25 }, 
-      ...workersList.map(() => ({ wch: 15 })), 
-      { wch: 15 } 
-  ];
+  ws['!merges'] = merges;
+  
+  const wscols = [];
+  wscols[0] = { wch: 15 };
+  realWorkers.forEach((_, i) => wscols[colMap[_]] = { wch: 22 });
+  if (hasUncovered) wscols[colMap["SCOPERTI"]] = { wch: 35 };
+  wscols[colMap["TOTALE"]] = { wch: 15 };
   ws['!cols'] = wscols;
 
   XLSX.utils.book_append_sheet(wb, ws, "Turni");
