@@ -125,10 +125,13 @@ function saveTurnTypesAndClose() {
 
     if(errorMsg) return alert("Errore: " + errorMsg);
 
+    // 1. Handle renaming for existing rows
     const limit = Math.min(turnTypes.length, newTypes.length);
     for (let i = 0; i < limit; i++) {
         const oldName = turnTypes[i].name;
         const newName = newTypes[i].name;
+        
+        // If the name changed, migrate the old availability data to the new name
         if (oldName && newName && oldName !== newName) {
             workers.forEach(w => {
                 if (w.disponibilita) {
@@ -145,9 +148,29 @@ function saveTurnTypesAndClose() {
             });
         }
     }
+    
+    // 2. Initialize ONLY genuinely new rows as 'false'
+    // A genuinely new shift is one that is appended past the original length of turnTypes
+    if (newTypes.length > turnTypes.length) {
+        for (let i = turnTypes.length; i < newTypes.length; i++) {
+            const newTName = newTypes[i].name;
+            workers.forEach(w => {
+                if (w.disponibilita) {
+                    for (const day in w.disponibilita) {
+                        // Set to false only if it hasn't been defined yet
+                        if (w.disponibilita[day][newTName] === undefined) {
+                            w.disponibilita[day][newTName] = false; 
+                        }
+                    }
+                }
+            });
+        }
+    }
     turnTypes = newTypes;
     closeTurnTypes();
-    renderWorkers(); renderRoles(); storeAll();
+    renderWorkers(); 
+    renderRoles(); 
+    storeAll();
 }
 
 function getTurnHours(turnName) {
@@ -267,7 +290,8 @@ function renderAvailabilityTable(currentData = {}) {
         let html = `<td>${g.substr(0,3)}</td>`;
         turnTypes.forEach(t => {
             const chk = currentData[g] && currentData[g][t.name];
-            html += `<td><input type="checkbox" data-d="${g}" data-t="${t.name}" ${chk!==false?"checked":""}></td>`;
+            // FIX: explicitly check for true so undefined (new turni) defaults to unchecked
+            html += `<td><input type="checkbox" data-d="${g}" data-t="${t.name}" ${chk===true?"checked":""}></td>`;
         });
         tbody.innerHTML += `<tr>${html}</tr>`;
     });
@@ -292,7 +316,9 @@ function closeworker() { document.getElementById("addworkerpage").style.display 
 function aggiungiEChiudi() {
   const nome = document.getElementById("nome").value.trim();
   const ruoli = getSelectedRuoli();
-  const maxOre = parseInt(document.getElementById("maxOreInput").value, 10);
+  
+  // FIX: Usa parseFloat invece di parseInt per permettere i decimali
+  const maxOre = parseFloat(document.getElementById("maxOreInput").value);
   
   if (!nome) return alert("Inserisci nome.");
   if (!ruoli.length) return alert("Seleziona almeno un ruolo.");
@@ -314,7 +340,6 @@ function aggiungiEChiudi() {
       if(workers.some(w => w.nome.toLowerCase() === nome.toLowerCase())) return alert("Nome esistente.");
       workers.push(newW);
   }
-  
   closeworker(); renderWorkers(); storeAll();
 }
 
@@ -367,12 +392,29 @@ function aggiungiRuoloEChiudi() {
 
     const newR = new Ruolo(nome, shifts);
     if(editingRoleIndex !== -1) {
+        
+        // FIX: Update the role name inside the workers' arrays if it was changed
+        const oldRoleName = roles.find(r => r.index === editingRoleIndex).nome;
+        if (oldRoleName !== nome) {
+            workers.forEach(w => {
+                const roleIdx = w.ruoli.indexOf(oldRoleName);
+                if (roleIdx !== -1) {
+                    w.ruoli[roleIdx] = nome; // Replace old name with new name
+                }
+            });
+        }
+        
         newR.index = editingRoleIndex;
         roles = roles.map(r => r.index === editingRoleIndex ? newR : r);
     } else {
         roles.push(newR);
     }
-    closerole(); renderRoles(); renderCustomRuoli(); storeAll();
+    
+    closerole(); 
+    renderRoles(); 
+    renderWorkers(); // FIX: Re-render the workers to show the updated role chips on their cards
+    renderCustomRuoli(); 
+    storeAll(); // This ensures the new worker states are persisted to the backend
 }
 function editRole(i) {
     const r = roles.find(x => x.index === i);

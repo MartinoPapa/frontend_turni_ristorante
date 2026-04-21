@@ -1,0 +1,3 @@
+errore risolto: ora quando si modifica il nome di un ruolo esso viane correttamente modificato per tutto il personale.
+modifica: ora quando si aggiunge un nuovo turno il personale già presente viene inizializzato come non disponibile per quel turno.
+errore risolto: ora le ore possono assumere qualsiasi valore (esempio: 18:30 è consentito)

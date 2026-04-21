@@ -237,14 +237,19 @@ function stampa(data) {
         let workerTasks = result[worker];
         let totOre = workerTasks.reduce((acc, curr) => acc + curr.ore, 0);
 
+        // Conversione da formato decimale (es. 7.5) a formato HH:MM (es. 7:30)
+        let h = Math.floor(totOre);
+        let m = Math.round((totOre - h) * 60);
+        let oreFormattate = `${h}:${m.toString().padStart(2, '0')}`;
+
         // Creiamo la card del lavoratore
         let cardHtml = `
         <div class="worker-report-card">
             <div class="worker-header">
                 <h3>${worker}</h3>
-                <span class="total-badge">${totOre} ore</span>
+                <span class="total-badge">${oreFormattate} ore</span>
             </div>
-            <div class="week-grid">`;
+        <div class="week-grid">`;
 
         // Iteriamo i giorni per creare le caselle
         daysOrder.forEach(day => {
@@ -378,23 +383,23 @@ function exportScheduleToExcel() {
           fill: { fgColor: TOTAL_COLOR }, 
           border: styleBorder, 
           alignment: { horizontal: "center", vertical: "center" }, 
-          numFmt: "0.00" 
+          numFmt: "[h]:mm" // <-- MODIFICATO QUI
       },
       // Totale Settimanale (Footer) - Leggermente più scuro per stacco visivo
       totalFooter: { 
           font: { bold: true, color: { rgb: "000000" } }, 
-          fill: { fgColor: TOTAL_COLOR }, // Mantiene lo stesso colore come richiesto
+          fill: { fgColor: TOTAL_COLOR }, 
           border: { top: {style:"medium"}, bottom: {style:"medium"}, left: {style:"thin"}, right: {style:"thin"} }, 
           alignment: { horizontal: "center", vertical: "center" }, 
-          numFmt: "0.00" 
+          numFmt: "[h]:mm" // <-- MODIFICATO QUI
       },
       // Incrocio Totale (Angolo in basso a destra)
       grandTotal: { 
           font: { bold: true, sz: 12, color: { rgb: "000000" } }, 
-          fill: { fgColor: { rgb: "BFBFBF" } }, // Appena più scuro per l'angolo finale
+          fill: { fgColor: { rgb: "BFBFBF" } }, 
           border: { top: {style:"medium"}, bottom: {style:"medium"}, left: {style:"thin"}, right: {style:"thin"} }, 
           alignment: { horizontal: "center", vertical: "center" }, 
-          numFmt: "0.00" 
+          numFmt: "[h]:mm" // <-- MODIFICATO QUI
       }
   };
 
@@ -498,6 +503,16 @@ function exportScheduleToExcel() {
               ws_data[startRow][cIdx] = { v: "Riposo", s: styles.rest };
               for(let r=1; r<rowsNeeded; r++) ws_data[startRow + r][cIdx].s = styles.rest;
               merges.push({ s: {r: startRow, c: cIdx}, e: {r: startRow + rowsNeeded - 1, c: cIdx} });
+              
+              // NUOVO: Creiamo i riferimenti invisibili così la formula è già pronta all'uso
+              // Si basa su quante righe (slot) ha il lavoratore con più turni quel giorno
+              for(let index = 0; index < maxWorkerShifts; index++) {
+                  const rBase = startRow + (index * 3);
+                  timePairsRefs.push({
+                      start: getCellRef(rBase+1, cIdx),
+                      end: getCellRef(rBase+2, cIdx)
+                  });
+              }
           } else {
               tasks.forEach((task, index) => {
                   const rBase = startRow + (index * 3);
@@ -547,14 +562,18 @@ function exportScheduleToExcel() {
           const timePairs = this.dailyFormulasMap[w];
           
           if (timePairs && timePairs.length > 0) {
-              const parts = timePairs.map(p => `MOD(${p.end}-${p.start},1)`);
-              const formula = `(${parts.join("+")})*24`;
+              // NUOVO: Usiamo IFERROR per prevenire l'errore #VALORE! causato dalla scritta "Riposo"
+              const parts = timePairs.map(p => `IFERROR(MOD(${p.end}-${p.start},1),0)`);
+              const formula = `${parts.join("+")}`; 
               
               summaryRow[cIdx] = { t: 'n', f: formula, s: styles.total };
               workerDailyTotalRefs[w].push(getCellRef(summaryRowIndex, cIdx));
               rowDailyTotalRefs.push(getCellRef(summaryRowIndex, cIdx));
           } else {
-              summaryRow[cIdx] = { v: "-", s: styles.total };
+              // Questo scatta solo se l'intero ristorante è chiuso (maxWorkerShifts = 0)
+              summaryRow[cIdx] = { v: 0, t: 'n', s: styles.total };
+              workerDailyTotalRefs[w].push(getCellRef(summaryRowIndex, cIdx));
+              rowDailyTotalRefs.push(getCellRef(summaryRowIndex, cIdx));
           }
       });
 
