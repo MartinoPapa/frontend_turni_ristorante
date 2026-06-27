@@ -11,11 +11,20 @@ let turnTypes = [
 
 let worker_index = 0;
 let role_index = 0;
-let psw = "";
+let session = null; // Sessione Supabase (sostituisce psw)
 let editingRoleIndex = -1;
 let editingWorkerIndex = -1;
 
+// ---------------------
+// CONFIGURAZIONE
+// ---------------------
 const BACKEND_URL = "https://backend-turni-ristorante.onrender.com";
+const SUPABASE_URL = "https://mkxxwghoclxbqhsbxpyr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_OD1Vlbww7r_u_PQy3pr63Q_bmBvwS8x";
+
+// Inizializzazione client Supabase (usa la libreria caricata da CDN)
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =================== HELPER ===================
 function calculateHours(start, end) {
@@ -23,7 +32,7 @@ function calculateHours(start, end) {
     const [h1, m1] = start.split(":").map(Number);
     const [h2, m2] = end.split(":").map(Number);
     let diff = (h2 + m2 / 60) - (h1 + m1 / 60);
-    if (diff < 0) diff += 24; 
+    if (diff < 0) diff += 24;
     return parseFloat(diff.toFixed(2));
 }
 
@@ -32,36 +41,57 @@ function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// =================== FETCH ===================
-async function storeData(key, value) {
-  try {
-    const response = await fetch(`${BACKEND_URL}/store`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, value })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    return data;
-  } catch (err) {
-    console.error("Store error:", err);
-    return { local: true };
-  }
+// =================== SUPABASE: STORE / LOAD ===================
+
+/**
+ * Salva i dati del ristorante nel database Supabase.
+ * Usa upsert per creare o aggiornare la riga dell'utente.
+ */
+async function storeAll() {
+    if (!session) return;
+    const userId = session.user.id;
+    const payload = {
+        user_id: userId,
+        data: {
+            workers: workers.map(w => w.serialize()),
+            roles: roles.map(r => r.serialize()),
+            turnTypes
+        }
+    };
+    const { error } = await supabaseClient
+        .from("restaurant_data")
+        .upsert(payload, { onConflict: "user_id" });
+    if (error) console.error("Store error:", error.message);
 }
-async function loadData(key) {
-  try {
-    const response = await fetch(`${BACKEND_URL}/load`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    return data; // <--- MODIFICA QUI: Ritorna tutto l'oggetto {key, value, name} invece di data.value
-  } catch (err) {
-    console.warn("Load error:", err);
-  }
-  return null;
+
+/**
+ * Carica i dati del ristorante da Supabase e aggiorna la UI.
+ * Se non esistono dati, parte da uno stato vuoto (default).
+ */
+async function loadAll() {
+    if (!session) return;
+
+    // Aggiorna il titolo con il nome dell'utente (email prefix)
+    const displayName = session.user.user_metadata?.restaurant_name
+        || session.user.email.split("@")[0];
+    document.getElementById("Title").innerText = displayName + " - Gestionale Turni";
+    document.title = "Shiftly | " + displayName;
+
+    const { data, error } = await supabaseClient
+        .from("restaurant_data")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Load error:", error.message);
+        return;
+    }
+
+    if (data && data.data) {
+        restore(data.data);
+    }
+    // Se non ci sono dati, si parte con lo stato di default (workers/roles/turnTypes già inizializzati)
 }
 
 // =================== TURNI (CONFIGURAZIONE ORARI) ===================
@@ -97,7 +127,7 @@ function syncTurnTypesFromDOM() {
     }));
 }
 function addTurnTypeRow() {
-    turnTypes = syncTurnTypesFromDOM(); 
+    turnTypes = syncTurnTypesFromDOM();
     turnTypes.push({ name: "", start: "12:00", end: "15:00" });
     renderTurnTypesEditor();
 }
@@ -116,22 +146,21 @@ function saveTurnTypesAndClose() {
         const nameRaw = row.querySelector(".turn-name").value.trim();
         const start = row.querySelector(".turn-start").value;
         const end = row.querySelector(".turn-end").value;
-        
-        if(!nameRaw) errorMsg = "Tutte le tipologie devono avere un nome.";
-        if(!start || !end) errorMsg = "Tutti i turni devono avere orari validi.";
-        
+
+        if (!nameRaw) errorMsg = "Tutte le tipologie devono avere un nome.";
+        if (!start || !end) errorMsg = "Tutti i turni devono avere orari validi.";
+
         newTypes.push({ name: capitalize(nameRaw), start, end });
     });
 
-    if(errorMsg) return alert("Errore: " + errorMsg);
+    if (errorMsg) return alert("Errore: " + errorMsg);
 
-    // 1. Handle renaming for existing rows
+    // 1. Gestione rinominazione turni esistenti
     const limit = Math.min(turnTypes.length, newTypes.length);
     for (let i = 0; i < limit; i++) {
         const oldName = turnTypes[i].name;
         const newName = newTypes[i].name;
-        
-        // If the name changed, migrate the old availability data to the new name
+
         if (oldName && newName && oldName !== newName) {
             workers.forEach(w => {
                 if (w.disponibilita) {
@@ -148,18 +177,16 @@ function saveTurnTypesAndClose() {
             });
         }
     }
-    
-    // 2. Initialize ONLY genuinely new rows as 'false'
-    // A genuinely new shift is one that is appended past the original length of turnTypes
+
+    // 2. Inizializza nuovi turni aggiunti come 'false'
     if (newTypes.length > turnTypes.length) {
         for (let i = turnTypes.length; i < newTypes.length; i++) {
             const newTName = newTypes[i].name;
             workers.forEach(w => {
                 if (w.disponibilita) {
                     for (const day in w.disponibilita) {
-                        // Set to false only if it hasn't been defined yet
                         if (w.disponibilita[day][newTName] === undefined) {
-                            w.disponibilita[day][newTName] = false; 
+                            w.disponibilita[day][newTName] = false;
                         }
                     }
                 }
@@ -168,8 +195,8 @@ function saveTurnTypesAndClose() {
     }
     turnTypes = newTypes;
     closeTurnTypes();
-    renderWorkers(); 
-    renderRoles(); 
+    renderWorkers();
+    renderRoles();
     storeAll();
 }
 
@@ -181,99 +208,97 @@ function getTurnHours(turnName) {
 
 // =================== CLASSI ===================
 class Lavoratore {
-  constructor(nome, ruoli, disponibilita, maxOre) {
-    this.nome = nome;
-    this.ruoli = ruoli;
-    this.disponibilita = disponibilita; 
-    this.maxOre = maxOre;
-    this.index = worker_index++;
-  }
-  generaCard() {
-    const article = document.createElement("article");
-    article.classList.add("card");
-    const ths = turnTypes.map(t => `<th>${t.name.substr(0,3)}</th>`).join("");
-    const tableRows = Object.entries(this.disponibilita).map(([giorno, disp]) => {
-        const tds = turnTypes.map(t => {
-            const isAvail = disp[t.name] === true;
-            return `<td class="${isAvail ? "yes" : "no"}">${isAvail ? "✓" : "✗"}</td>`;
+    constructor(nome, ruoli, disponibilita, maxOre) {
+        this.nome = nome;
+        this.ruoli = ruoli;
+        this.disponibilita = disponibilita;
+        this.maxOre = maxOre;
+        this.index = worker_index++;
+    }
+    generaCard() {
+        const article = document.createElement("article");
+        article.classList.add("card");
+        const ths = turnTypes.map(t => `<th>${t.name.substr(0, 3)}</th>`).join("");
+        const tableRows = Object.entries(this.disponibilita).map(([giorno, disp]) => {
+            const tds = turnTypes.map(t => {
+                const isAvail = disp[t.name] === true;
+                return `<td class="${isAvail ? "yes" : "no"}">${isAvail ? "✓" : "✗"}</td>`;
+            }).join("");
+            return `<tr><td>${giorno.substr(0, 3)}</td>${tds}</tr>`;
         }).join("");
-        return `<tr><td>${giorno.substr(0,3)}</td>${tds}</tr>`;
-    }).join("");
 
-    article.innerHTML = `
-      <h4>${this.nome}</h4>
-      <h6>${this.ruoli.join(", ")}</h6>
-      <h5>Disponibilità</h5>
-      <div style="overflow-x:auto; width:100%">
-        <table class="schedule-table"><thead><tr><th></th>${ths}</tr></thead><tbody>${tableRows}</tbody></table>
-      </div>
-      <div class="meta">${this.maxOre}h/settimana</div>
-      <div class="trebottoni" style="margin-top:10px">
-        <button onclick="editWorker(${this.index})">Modifica</button>
-        <button onclick="eliminaLavoratore(${this.index})">Elimina</button>
-      </div>
-    `;
-    return article;
-  }
-  serialize() { return { nome: this.nome, ruoli: this.ruoli, disponibilita: this.disponibilita, maxOre: this.maxOre }; }
+        article.innerHTML = `
+          <h4>${this.nome}</h4>
+          <h6>${this.ruoli.join(", ")}</h6>
+          <h5>Disponibilità</h5>
+          <div style="overflow-x:auto; width:100%">
+            <table class="schedule-table"><thead><tr><th></th>${ths}</tr></thead><tbody>${tableRows}</tbody></table>
+          </div>
+          <div class="meta">${this.maxOre}h/settimana</div>
+          <div class="trebottoni" style="margin-top:10px">
+            <button onclick="editWorker(${this.index})">Modifica</button>
+            <button onclick="eliminaLavoratore(${this.index})">Elimina</button>
+          </div>
+        `;
+        return article;
+    }
+    serialize() {
+        return { nome: this.nome, ruoli: this.ruoli, disponibilita: this.disponibilita, maxOre: this.maxOre };
+    }
 }
 
 class Ruolo {
-  constructor(nome, shifts = []) {
-    this.nome = nome;
-    this.shifts = shifts; 
-    this.index = role_index++;
-  }
-  generaCard() {
-    const article = document.createElement("div");
-    article.classList.add("ruolo");
-    const shiftRows = this.shifts.map(s => {
-        return `<tr><td>${s.giorno}</td><td>${s.turno}</td><td>${s.persone}</td></tr>`;
-    }).join("");
-    article.innerHTML = `
-      <h4>${this.nome}</h4>
-      <table class="shift-table">
-        <thead><tr><th>Giorno</th><th>Turno</th><th>Pers</th></tr></thead>
-        <tbody>${shiftRows}</tbody>
-      </table>
-      <div class="trebottoni">
-        <button onclick="editRole(${this.index})">Modifica</button>
-        <button onclick="duplicateRole(${this.index})" class="btn-duplicate">Duplica</button>
-        <button onclick="eliminaRuolo(${this.index})">Elimina</button>
-      </div>`;
-    return article;
-  }
-  serialize() { return { nome: this.nome, shifts: this.shifts }; }
+    constructor(nome, shifts = []) {
+        this.nome = nome;
+        this.shifts = shifts;
+        this.index = role_index++;
+    }
+    generaCard() {
+        const article = document.createElement("div");
+        article.classList.add("ruolo");
+        const shiftRows = this.shifts.map(s => {
+            return `<tr><td>${s.giorno}</td><td>${s.turno}</td><td>${s.persone}</td></tr>`;
+        }).join("");
+        article.innerHTML = `
+          <h4>${this.nome}</h4>
+          <table class="shift-table">
+            <thead><tr><th>Giorno</th><th>Turno</th><th>Pers</th></tr></thead>
+            <tbody>${shiftRows}</tbody>
+          </table>
+          <div class="trebottoni">
+            <button onclick="editRole(${this.index})">Modifica</button>
+            <button onclick="duplicateRole(${this.index})" class="btn-duplicate">Duplica</button>
+            <button onclick="eliminaRuolo(${this.index})">Elimina</button>
+          </div>`;
+        return article;
+    }
+    serialize() { return { nome: this.nome, shifts: this.shifts }; }
 }
 
 // =================== WORKER UI (CHIPS) ===================
 const GIORNI_SETTIMANA = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
 
 function renderCustomRuoli(selectedArr = []) {
-  const container = document.getElementById("ruoloSelectContainer");
-  container.innerHTML = "";
-  
-  const wrapper = document.createElement("div");
-  wrapper.className = "chip-container";
-  
-  if(roles.length === 0) {
-      wrapper.innerHTML = "<span style='color:#777; font-size:0.9em; padding:5px;'>Nessun ruolo creato. Aggiungi prima un ruolo.</span>";
-  }
+    const container = document.getElementById("ruoloSelectContainer");
+    container.innerHTML = "";
 
-  roles.forEach(r => {
-    const chip = document.createElement("div");
-    chip.className = "role-chip";
-    if (selectedArr.includes(r.nome)) chip.classList.add("selected");
-    chip.innerText = r.nome;
-    
-    chip.onclick = () => {
-        chip.classList.toggle("selected");
-    };
-    
-    wrapper.appendChild(chip);
-  });
-  
-  container.appendChild(wrapper);
+    const wrapper = document.createElement("div");
+    wrapper.className = "chip-container";
+
+    if (roles.length === 0) {
+        wrapper.innerHTML = "<span style='color:#777; font-size:0.9em; padding:5px;'>Nessun ruolo creato. Aggiungi prima un ruolo.</span>";
+    }
+
+    roles.forEach(r => {
+        const chip = document.createElement("div");
+        chip.className = "role-chip";
+        if (selectedArr.includes(r.nome)) chip.classList.add("selected");
+        chip.innerText = r.nome;
+        chip.onclick = () => { chip.classList.toggle("selected"); };
+        wrapper.appendChild(chip);
+    });
+
+    container.appendChild(wrapper);
 }
 
 function getSelectedRuoli() {
@@ -284,68 +309,69 @@ function getSelectedRuoli() {
 function renderAvailabilityTable(currentData = {}) {
     const tbody = document.querySelector("#scheduleTable tbody");
     const thead = document.querySelector("#scheduleTable thead");
-    thead.innerHTML = "<tr><th></th>" + turnTypes.map(t=>`<th>${t.name}</th>`).join("") + "</tr>";
+    thead.innerHTML = "<tr><th></th>" + turnTypes.map(t => `<th>${t.name}</th>`).join("") + "</tr>";
     tbody.innerHTML = "";
     GIORNI_SETTIMANA.forEach(g => {
-        let html = `<td>${g.substr(0,3)}</td>`;
+        let html = `<td>${g.substr(0, 3)}</td>`;
         turnTypes.forEach(t => {
             const chk = currentData[g] && currentData[g][t.name];
-            // FIX: explicitly check for true so undefined (new turni) defaults to unchecked
-            html += `<td><input type="checkbox" data-d="${g}" data-t="${t.name}" ${chk===true?"checked":""}></td>`;
+            html += `<td><input type="checkbox" data-d="${g}" data-t="${t.name}" ${chk === true ? "checked" : ""}></td>`;
         });
         tbody.innerHTML += `<tr>${html}</tr>`;
     });
 }
 
 function openworker() {
-  editingWorkerIndex = -1;
-  document.getElementById("addworkerpage").style.display = "flex";
-  document.getElementById("nome").value = "";
-  document.getElementById("maxOreInput").value = "";
-  renderCustomRuoli();
-  renderAvailabilityTable(getInitialAvailability(false)); 
+    editingWorkerIndex = -1;
+    document.getElementById("addworkerpage").style.display = "flex";
+    document.getElementById("nome").value = "";
+    document.getElementById("maxOreInput").value = "";
+    renderCustomRuoli();
+    renderAvailabilityTable(getInitialAvailability(false));
 }
 
 function getInitialAvailability(val) {
-    let a = {}; GIORNI_SETTIMANA.forEach(d => { a[d] = {}; turnTypes.forEach(t => a[d][t.name] = val); });
+    let a = {};
+    GIORNI_SETTIMANA.forEach(d => {
+        a[d] = {};
+        turnTypes.forEach(t => a[d][t.name] = val);
+    });
     return a;
 }
 
 function closeworker() { document.getElementById("addworkerpage").style.display = "none"; }
 
 function aggiungiEChiudi() {
-  const nome = document.getElementById("nome").value.trim();
-  const ruoli = getSelectedRuoli();
-  
-  // FIX: Usa parseFloat invece di parseInt per permettere i decimali
-  const maxOre = parseFloat(document.getElementById("maxOreInput").value);
-  
-  if (!nome) return alert("Inserisci nome.");
-  if (!ruoli.length) return alert("Seleziona almeno un ruolo.");
-  if (!maxOre || maxOre <= 0) return alert("Ore non valide.");
+    const nome = document.getElementById("nome").value.trim();
+    const ruoli = getSelectedRuoli();
+    const maxOre = parseFloat(document.getElementById("maxOreInput").value);
 
-  const disp = {};
-  document.querySelectorAll("#scheduleTable input[type=checkbox]").forEach(c => {
-      const d = c.getAttribute("data-d"), t = c.getAttribute("data-t");
-      if(!disp[d]) disp[d] = {};
-      disp[d][t] = c.checked;
-  });
+    if (!nome) return alert("Inserisci nome.");
+    if (!ruoli.length) return alert("Seleziona almeno un ruolo.");
+    if (!maxOre || maxOre <= 0) return alert("Ore non valide.");
 
-  const newW = new Lavoratore(nome, ruoli, disp, maxOre);
-  
-  if(editingWorkerIndex !== -1) {
-      newW.index = editingWorkerIndex;
-      workers = workers.map(w => w.index === editingWorkerIndex ? newW : w);
-  } else {
-      if(workers.some(w => w.nome.toLowerCase() === nome.toLowerCase())) return alert("Nome esistente.");
-      workers.push(newW);
-  }
-  closeworker(); renderWorkers(); storeAll();
+    const disp = {};
+    document.querySelectorAll("#scheduleTable input[type=checkbox]").forEach(c => {
+        const d = c.getAttribute("data-d"), t = c.getAttribute("data-t");
+        if (!disp[d]) disp[d] = {};
+        disp[d][t] = c.checked;
+    });
+
+    const newW = new Lavoratore(nome, ruoli, disp, maxOre);
+
+    if (editingWorkerIndex !== -1) {
+        newW.index = editingWorkerIndex;
+        workers = workers.map(w => w.index === editingWorkerIndex ? newW : w);
+    } else {
+        if (workers.some(w => w.nome.toLowerCase() === nome.toLowerCase())) return alert("Nome esistente.");
+        workers.push(newW);
+    }
+    closeworker(); renderWorkers(); storeAll();
 }
 
 function editWorker(i) {
     const w = workers.find(x => x.index === i);
-    if(!w) return;
+    if (!w) return;
     editingWorkerIndex = i;
     document.getElementById("addworkerpage").style.display = "flex";
     document.getElementById("nome").value = w.nome;
@@ -357,26 +383,26 @@ function eliminaLavoratore(i) { workers = workers.filter(w => w.index !== i); re
 function renderWorkers() { document.getElementById("track").innerHTML = ""; workers.forEach(w => document.getElementById("track").appendChild(w.generaCard())); }
 
 // =================== ROLE UI ===================
-function openrole() { editingRoleIndex = -1; document.getElementById("addrolepage").style.display = "flex"; document.getElementById("roleName").value=""; document.getElementById("roleShiftsContainer").innerHTML=""; addShiftRow(); }
+function openrole() { editingRoleIndex = -1; document.getElementById("addrolepage").style.display = "flex"; document.getElementById("roleName").value = ""; document.getElementById("roleShiftsContainer").innerHTML = ""; addShiftRow(); }
 function closerole() { document.getElementById("addrolepage").style.display = "none"; }
 
 function addShiftRow(pre = null) {
-    const div = document.createElement("div"); 
+    const div = document.createElement("div");
     div.className = "shift-row";
     div.innerHTML = `
-      <select class="ds">${GIORNI_SETTIMANA.map(g=>`<option>${g}</option>`).join("")}</select>
-      <select class="ts">${turnTypes.map(t=>`<option value="${t.name}">${t.name}</option>`).join("")}</select>
+      <select class="ds">${GIORNI_SETTIMANA.map(g => `<option>${g}</option>`).join("")}</select>
+      <select class="ts">${turnTypes.map(t => `<option value="${t.name}">${t.name}</option>`).join("")}</select>
       <input type="number" min="1" value="1" class="pi">
       <button class="delete-shift">X</button>
     `;
     div.querySelector(".delete-shift").onclick = () => div.remove();
-    if(pre) { div.querySelector(".ds").value=pre.giorno; div.querySelector(".ts").value=pre.turno; div.querySelector(".pi").value=pre.persone; }
+    if (pre) { div.querySelector(".ds").value = pre.giorno; div.querySelector(".ts").value = pre.turno; div.querySelector(".pi").value = pre.persone; }
     document.getElementById("roleShiftsContainer").appendChild(div);
 }
 
 function aggiungiRuoloEChiudi() {
     const nome = document.getElementById("roleName").value.trim();
-    if(!nome) return alert("Inserisci nome ruolo.");
+    if (!nome) return alert("Inserisci nome ruolo.");
 
     const nomeEsiste = roles.some(r => r.nome.toLowerCase() === nome.toLowerCase() && r.index !== editingRoleIndex);
     if (nomeEsiste) return alert("Esiste già un ruolo con questo nome.");
@@ -385,36 +411,31 @@ function aggiungiRuoloEChiudi() {
     let err = false;
     document.querySelectorAll(".shift-row").forEach(r => {
         const p = parseInt(r.querySelector(".pi").value);
-        if(p<1) err = true;
+        if (p < 1) err = true;
         shifts.push({ giorno: r.querySelector(".ds").value, turno: r.querySelector(".ts").value, persone: p });
     });
-    if(err || !shifts.length) return alert("Controlla i turni.");
+    if (err || !shifts.length) return alert("Controlla i turni.");
 
     const newR = new Ruolo(nome, shifts);
-    if(editingRoleIndex !== -1) {
-        
-        // FIX: Update the role name inside the workers' arrays if it was changed
+    if (editingRoleIndex !== -1) {
         const oldRoleName = roles.find(r => r.index === editingRoleIndex).nome;
         if (oldRoleName !== nome) {
             workers.forEach(w => {
                 const roleIdx = w.ruoli.indexOf(oldRoleName);
-                if (roleIdx !== -1) {
-                    w.ruoli[roleIdx] = nome; // Replace old name with new name
-                }
+                if (roleIdx !== -1) { w.ruoli[roleIdx] = nome; }
             });
         }
-        
         newR.index = editingRoleIndex;
         roles = roles.map(r => r.index === editingRoleIndex ? newR : r);
     } else {
         roles.push(newR);
     }
-    
-    closerole(); 
-    renderRoles(); 
-    renderWorkers(); // FIX: Re-render the workers to show the updated role chips on their cards
-    renderCustomRuoli(); 
-    storeAll(); // This ensures the new worker states are persisted to the backend
+
+    closerole();
+    renderRoles();
+    renderWorkers();
+    renderCustomRuoli();
+    storeAll();
 }
 function editRole(i) {
     const r = roles.find(x => x.index === i);
@@ -435,92 +456,99 @@ function duplicateRole(i) {
 function eliminaRuolo(i) { roles = roles.filter(r => r.index !== i); renderRoles(); renderCustomRuoli(); storeAll(); }
 function renderRoles() { document.getElementById("ruoliWrapper").innerHTML = ""; roles.forEach(r => document.getElementById("ruoliWrapper").appendChild(r.generaCard())); }
 
-// =================== SYSTEM (LOGIN AGGIORNATO) ===================
-function storeAll() { if(psw) storeData(psw, { workers: workers.map(w=>w.serialize()), roles: roles.map(r=>r.serialize()), turnTypes }); }
-function loadAll() {
-  loadData(psw).then(data => {
-    if (data && data.value) {
-      // Se il backend restituisce un nome, aggiorna il titolo H1
-      console.log("Loaded data:", data);
-      if (data.name){
-        document.getElementById("Title").innerText = data.name + " - Gestionale Turni";
-        document.title = "Shiftly | " + data.name;
-      } 
-      
-      restore(data.value); // Passa solo i dati operativi (workers, roles...) a restore
-    }
-  });
-}
-function restore(d) {
-    if(d.turnTypes) turnTypes = d.turnTypes;
-    workers = (d.workers||[]).map(w=>new Lavoratore(w.nome,w.ruoli,w.disponibilita,w.maxOre));
-    roles = (d.roles||[]).map(r=>new Ruolo(r.nome,r.shifts));
-    worker_index = workers.length?Math.max(...workers.map(w=>w.index))+1:0;
-    role_index = roles.length?Math.max(...roles.map(r=>r.index))+1:0;
-    renderWorkers(); renderRoles(); renderCustomRuoli();
-}
+// =================== AUTH (SUPABASE) ===================
 
+/**
+ * Login con Supabase Auth tramite email e password.
+ * Dopo il login, carica i dati dell'utente dal database.
+ */
 async function login() {
-    const input = document.getElementById("codice");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
     const btn = document.getElementById("logbutton");
     const originalText = btn.innerText;
 
-    psw = input.value.trim();
-    if(!psw) return alert("Inserisci un codice.");
-    
-    // Stato Loading
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email) return alert("Inserisci la tua email.");
+    if (!password) return alert("Inserisci la password.");
+
+    // Stato loading
     btn.disabled = true;
     btn.innerText = "Attendere...";
-    
+
     try {
-        const r = await inList();
-        
-        if(!r || !r.valid) {
-            alert("Codice non valido.");
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            alert("Credenziali non valide: " + error.message);
             btn.disabled = false;
             btn.innerText = originalText;
             return;
         }
-        
+
+        session = data.session;
         document.getElementById("loginpage").style.display = "none";
-        loadAll();
-        
+        await loadAll();
+
         btn.disabled = false;
         btn.innerText = originalText;
 
-    } catch(e) {
+    } catch (e) {
         console.error("Login error:", e);
-        alert("Errore di connessione.");
+        alert("Errore di connessione. Riprova.");
         btn.disabled = false;
         btn.innerText = originalText;
     }
 }
 
-async function inList() {
-    try { return await (await fetch(`${BACKEND_URL}/inList`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key:psw})})).json(); }
-    catch(e){return false;}
+/**
+ * Ripristina lo stato dell'app da un oggetto dati serializzato.
+ */
+function restore(d) {
+    if (d.turnTypes) turnTypes = d.turnTypes;
+    workers = (d.workers || []).map(w => new Lavoratore(w.nome, w.ruoli, w.disponibilita, w.maxOre));
+    roles = (d.roles || []).map(r => new Ruolo(r.nome, r.shifts));
+    worker_index = workers.length ? Math.max(...workers.map(w => w.index)) + 1 : 0;
+    role_index = roles.length ? Math.max(...roles.map(r => r.index)) + 1 : 0;
+    renderWorkers(); renderRoles(); renderCustomRuoli();
 }
+
+// =================== BACKUP LOCALE ===================
 function saveLocal() {
-    const blob = new Blob([JSON.stringify({ workers: workers.map(w=>w.serialize()), roles: roles.map(r=>r.serialize()), turnTypes }, null, 2)], { type: "application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "shiftly_backup.json"; a.click();
+    const blob = new Blob(
+        [JSON.stringify({ workers: workers.map(w => w.serialize()), roles: roles.map(r => r.serialize()), turnTypes }, null, 2)],
+        { type: "application/json" }
+    );
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "shiftly_backup.json";
+    a.click();
 }
 function loadLocal(input) {
-    const f = input.files[0]; if(!f) return;
-    const r = new FileReader(); r.onload=e=>{ try{restore(JSON.parse(e.target.result)); alert("Dati caricati correttamente!"); if(psw) storeAll();}catch(x){alert("Errore nel caricamento del file");} };
+    const f = input.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = e => {
+        try {
+            restore(JSON.parse(e.target.result));
+            alert("Dati caricati correttamente!");
+            if (session) storeAll(); // Sincronizza su Supabase se loggato
+        } catch (x) {
+            alert("Errore nel caricamento del file");
+        }
+    };
     r.readAsText(f);
 }
 
-// =================== COPY FUNCTION (NUOVA) ===================
+// =================== COPY EMAIL ===================
 function copyEmail(e, email) {
     e.preventDefault();
     navigator.clipboard.writeText(email).then(() => {
         const label = document.getElementById("emailLabel");
         const original = label.innerText;
         label.innerText = "Email Copiata!";
-        // Ripristina il testo originale dopo 1.5 secondi
-        setTimeout(() => {
-            label.innerText = original;
-        }, 1500);
+        setTimeout(() => { label.innerText = original; }, 1500);
     }).catch(err => {
         console.error("Errore nella copia: ", err);
     });

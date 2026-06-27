@@ -118,10 +118,15 @@ function generaSets() {
 }
 
 async function getSchedule() {
+    // Verifica che l'utente sia autenticato prima di procedere
+    if (!session || !session.access_token) {
+        alert("Sessione scaduta. Ricarica la pagina ed effettua di nuovo il login.");
+        return;
+    }
+
     generaSets();
 
     payload = {
-        "key": psw, // INVIO DELLA PASSWORD (SICUREZZA MANTENUTA)
         "workers": workers_id,
         "shifts": shifts,
         "H": hoursPerShift,
@@ -134,7 +139,10 @@ async function getSchedule() {
     try {
         const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`
+            },
             body: JSON.stringify(payload)
         });
 

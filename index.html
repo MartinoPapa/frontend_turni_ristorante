@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
     <img src="logo.jpg" id="logo" alt="Logo">
@@ -62,7 +63,8 @@
             </div>
 
             <div class="login-body">
-                <input id="codice" type="password" placeholder="Inserisci codice accesso" class="login-input">
+                <input id="email" type="email" placeholder="Email" class="login-input" autocomplete="email">
+                <input id="password" type="password" placeholder="Password" class="login-input" autocomplete="current-password" style="margin-top: 12px;">
                 <button onclick="login()" id="logbutton" class="btn-login">ACCEDI</button>
             </div>
 
