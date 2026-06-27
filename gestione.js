@@ -72,7 +72,7 @@ async function loadAll() {
     if (!session) return;
 
     // Aggiorna il titolo con il nome dell'utente (email prefix)
-    const displayName = session.user.user_metadata?.restaurant_name
+    const displayName = session.user.user_metadata?.display_name
         || session.user.email.split("@")[0];
     document.getElementById("Title").innerText = displayName + " - Gestionale Turni";
     document.title = "Shiftly | " + displayName;

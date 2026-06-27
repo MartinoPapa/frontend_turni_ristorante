@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
+
 <body>
     <img src="logo.jpg" id="logo" alt="Logo">
     <div class="addworker" id="addworkerpage">
@@ -21,7 +23,10 @@
             <div id="ruoloSelectContainer"></div>
             <p>Disponibilità</p>
             <div style="overflow-x:auto">
-                <table class="schedule-table" id="scheduleTable"><thead></thead><tbody></tbody></table>
+                <table class="schedule-table" id="scheduleTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
             </div>
             <p>Ore settimanali</p>
             <input id="maxOreInput" type="number" placeholder="massimo  numero di ore settimanali">
@@ -57,22 +62,24 @@
             <div class="login-header">
                 <h1>Shiftly</h1>
                 <p class="app-desc">
-                    Gestisci i turni del tuo personale in modo semplice e intelligente. 
+                    Gestisci i turni del tuo personale in modo semplice e intelligente.
                     Organizza gli orari e ottimizza la produttività.
                 </p>
             </div>
 
             <div class="login-body">
                 <input id="email" type="email" placeholder="Email" class="login-input" autocomplete="email">
-                <input id="password" type="password" placeholder="Password" class="login-input" autocomplete="current-password" style="margin-top: 12px;">
-                <button onclick="login()" id="logbutton" class="btn-login">ACCEDI</button>
+                <input id="password" type="password" placeholder="Password" class="login-input"
+                    autocomplete="current-password">
+                <button onclick="login()" id="logbutton" class="btn-login" style="margin-top: 12px;">Accedi</button>
             </div>
 
             <div class="login-footer">
                 <p class="trial-text">Non hai ancora un account? <strong>Richiedi una prova gratuita</strong></p>
                 <div class="contact-links">
-                    <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="contact-item email" title="Clicca per copiare">
-                        <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i> 
+                    <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="contact-item email"
+                        title="Clicca per copiare">
+                        <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i>
                         <span id="emailLabel">martino.papa.tn@gmail.com</span>
                     </a>
                     <a href="https://wa.me/3938885176" target="_blank" class="contact-item whatsapp">
@@ -86,7 +93,7 @@
     <div class="container">
         <h1 id="Title">Shiftly</h1>
         <p class="powered">powered by Shiftly</p>
-        
+
         <div class="section-header">
             <h2>Ruoli e Turni</h2>
             <div>
@@ -104,7 +111,9 @@
         </div>
     </div>
     <div class="slider-wrap">
-        <div class="slider-viewport"><div class="slider-track" id="track"></div></div>
+        <div class="slider-viewport">
+            <div class="slider-track" id="track"></div>
+        </div>
     </div>
 
     <div class="genera">
@@ -118,7 +127,7 @@
                 <h2 style="margin:0">Turni generati con successo</h2>
                 <button onclick="exportScheduleToExcel()" class="scaricabtn">📥 Scarica Excel</button>
             </div>
-            
+
             <div id="generated"></div>
         </article>
     </div>
@@ -135,4 +144,5 @@
     <script src="gestione.js"></script>
     <script src="genera.js"></script>
 </body>
+
 </html>
