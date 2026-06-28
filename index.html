@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Shiftly — Gestione turni del personale semplice e intelligente per ristoranti.">
     <title>Shiftly</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -13,7 +16,8 @@
 </head>
 
 <body>
-    <img src="logo.jpg" id="logo" alt="Logo">
+    <img src="logo.jpg" id="logo" alt="Logo" style="cursor: pointer;"
+        onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
     <div class="addworker" id="addworkerpage">
         <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="X"></button>
         <article class="config-worker-page">
@@ -57,10 +61,10 @@
         </article>
     </div>
 
-    <div class="addworker" id="loginpage" style="display:flex">
+    <div class="addworker" id="loginpage" style="display: flex;">
         <article class="login-card">
             <div class="login-header">
-                <h1>Shiftly</h1>
+                <h1>Shift<span style="color:var(--amber)">ly</span></h1>
                 <p class="app-desc">
                     Gestisci i turni del tuo personale in modo semplice e intelligente.
                     Organizza gli orari e ottimizza la produttività.
@@ -90,10 +94,14 @@
         </article>
     </div>
 
-    <div class="container">
-        <h1 id="Title">Shiftly</h1>
-        <p class="powered">powered by Shiftly</p>
+    <div class="page-header-band">
+        <div class="container">
+            <h1 id="Title">Shift<span style="color:var(--amber)">ly</span></h1>
+            <p class="powered">powered by Shiftly</p>
+        </div>
+    </div>
 
+    <div class="container">
         <div class="section-header">
             <h2>Ruoli e Turni</h2>
             <div>
@@ -120,26 +128,55 @@
         <button onclick="getSchedule()" id="btngenera">Genera Turni</button>
     </div>
 
-    <div class="addworker" id="datiGenerati" style="background:rgba(0,0,0,0.9);">
-        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="X"></button>
-        <article style="max-width:95%; background:#f4f4f4; height:95%">
-            <div class="generated-header">
-                <h2 style="margin:0">Turni generati con successo</h2>
-                <button onclick="exportScheduleToExcel()" class="scaricabtn">📥 Scarica Excel</button>
+    <div class="addworker" id="datiGenerati">
+        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="Chiudi"></button>
+        <article style="max-width:95%;">
+            <div class="generated-topbar">
+                <span class="generated-topbar-title">Turni della settimana</span>
+                <button onclick="exportScheduleToExcel()" class="excel-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    File Excel
+                </button>
             </div>
-
             <div id="generated"></div>
         </article>
     </div>
-    <div class="footer">
-        <div class="local-save-controls">
-            <h3>Backup locale</h3>
-            <button class="scaricabtn" onclick="saveLocal()">Salva</button>
-            <button class="scaricabtn" onclick="document.getElementById('fileInput').click()">Carica</button>
-            <input type="file" id="fileInput" style="display:none" onchange="loadLocal(this)">
+    <footer class="main-footer">
+        <div class="footer-inner">
+            <div class="footer-col footer-brand-col">
+                <span class="footer-brand-name">Shift<span>ly</span></span>
+                <p class="footer-tagline">Gestionale turni semplice e intelligente</p>
+                <p class="footer-copy">&copy; 2025 Shiftly</p>
+            </div>
+            <div class="footer-col footer-links-col">
+                <h4 class="footer-col-title">Informazioni</h4>
+                <a href="privacy.pdf" target="_blank" class="footer-link">Informativa Privacy</a>
+            </div>
+            <div class="footer-col footer-contact-col">
+                <h4 class="footer-col-title">Assistenza</h4>
+                <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="footer-link"
+                    title="Clicca per copiare">
+                    <i class="fa-solid fa-envelope" aria-hidden="true"></i> martino.papa.tn@gmail.com
+                </a>
+                <a href="https://wa.me/3938885176" target="_blank" class="footer-link footer-link-whatsapp">
+                    <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> +39 393 888 5176
+                </a>
+            </div>
         </div>
-        <p>Shiftly 2025</p>
-    </div>
+        <div class="footer-bottom">
+            <input type="file" id="fileInput" style="display:none" onchange="loadLocal(this)">
+            <span class="backup-label">Backup locale:</span>
+            <button class="backup-link" onclick="saveLocal()">Salva</button>
+            <span class="backup-sep">&middot;</span>
+            <button class="backup-link" onclick="document.getElementById('fileInput').click()">Carica</button>
+        </div>
+    </footer>
 
     <script src="gestione.js"></script>
     <script src="genera.js"></script>
