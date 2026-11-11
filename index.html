@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 
-<body>
+<body class="login-active">
     <img src="logo.jpg" id="logo" alt="Logo" style="cursor: pointer;"
         onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
     <div class="addworker" id="addworkerpage">
@@ -61,37 +61,113 @@
         </article>
     </div>
 
-    <div class="addworker" id="loginpage" style="display: flex;">
-        <article class="login-card">
-            <div class="login-header">
-                <h1>Shift<span style="color:var(--amber)">ly</span></h1>
-                <p class="app-desc">
-                    Gestisci i turni del tuo personale in modo semplice e intelligente.
-                    Organizza gli orari e ottimizza la produttività.
-                </p>
+    <div class="login-page" id="loginpage" style="display: flex;">
+        <article class="login-shell">
+            <div class="login-brand-panel">
+                <div class="login-header">
+                    <h1>Shift<span style="color:var(--amber)">ly</span></h1>
+                    <p class="app-desc">
+                        Gestisci i turni del tuo personale in modo semplice e intelligente.
+                        Organizza gli orari e ottimizza la produttività del tuo ristorante.
+                    </p>
+                </div>
+
+                <div class="login-demo-box">
+                    <div class="login-demo-text">
+                        <strong>Vuoi provarlo subito?</strong>
+                        <span>I dati inseriti nella demo non verranno salvati.</span>
+                    </div>
+                    <button onclick="startDemo()" type="button" class="btn-demo">
+                        Esplora la Demo
+                    </button>
+                </div>
+
+                <div class="login-request-box">
+                    <div class="login-request-header">
+                        <strong>Vuoi attivare la versione completa?</strong>
+                        <span>Contattaci direttamente via Email o su WhatsApp</span>
+                    </div>
+                    <div class="contact-links">
+                        <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="contact-item email"
+                            title="Clicca per copiare l'indirizzo email">
+                            <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i>
+                            <span class="email-copy-label" id="emailLabel">martino.papa.tn@gmail.com</span>
+                            <span class="copy-badge">Copia</span>
+                        </a>
+                        <a href="https://wa.me/3938885176" target="_blank" class="contact-item whatsapp">
+                            <i class="fa-brands fa-whatsapp" style="font-size: 1.25em;"></i>
+                            <span>WhatsApp &middot; +39 393 888 5176</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+
+
+                <div class="login-meta-bottom">
+                    <a href="privacy.pdf" target="_blank" rel="noopener noreferrer"
+                        class="login-privacy-link">Informativa
+                        Privacy</a>
+                </div>
             </div>
 
-            <div class="login-body">
-                <input id="email" type="email" placeholder="Email" class="login-input" autocomplete="email">
-                <input id="password" type="password" placeholder="Password" class="login-input"
-                    autocomplete="current-password">
-                <button onclick="login()" id="logbutton" class="btn-login" style="margin-top: 12px;">Accedi</button>
-            </div>
-
-            <div class="login-footer">
-                <p class="trial-text">Non hai ancora un account? <strong>Richiedi una prova gratuita</strong></p>
-                <div class="contact-links">
-                    <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="contact-item email"
-                        title="Clicca per copiare">
-                        <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i>
-                        <span id="emailLabel">martino.papa.tn@gmail.com</span>
-                    </a>
-                    <a href="https://wa.me/3938885176" target="_blank" class="contact-item whatsapp">
-                        <i class="fa-brands fa-whatsapp" style="font-size: 1.2em;"></i> +39 393 888 5176
-                    </a>
+            <div class="login-form-panel">
+                <div class="login-form-header">
+                    <h2>Accedi</h2>
+                    <p>Inserisci le credenziali del tuo account</p>
+                </div>
+                <div class="login-body">
+                    <label class="login-label" for="email">Email</label>
+                    <input id="email" type="email" placeholder="email" class="login-input" autocomplete="email">
+                    <label class="login-label" for="password">Password</label>
+                    <input id="password" type="password" placeholder="••••••••" class="login-input"
+                        autocomplete="current-password">
+                    <button onclick="login()" id="logbutton" class="btn-login">Accedi</button>
                 </div>
             </div>
         </article>
+    </div>
+
+    <div class="addworker" id="demoModal">
+        <button class="btnClose" onclick="closeDemoModal()"><img src="close.png" alt="Chiudi"></button>
+        <article class="demo-modal-card">
+            <div class="demo-modal-badge" id="demoModalBadge">Modalità Demo</div>
+            <h2 id="demoModalTitle">Passa alla versione definitiva</h2>
+            <p id="demoModalDesc" class="demo-modal-desc">
+                Contattaci per attivare il tuo account completo e sbloccare tutte le funzionalità di Shiftly.
+            </p>
+            <div class="contact-links">
+                <a href="https://wa.me/3938885176" target="_blank" class="contact-item whatsapp">
+                    <i class="fa-brands fa-whatsapp" style="font-size: 1.25em;"></i>
+                    <span>WhatsApp &middot; +39 393 888 5176</span>
+                </a>
+                <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="contact-item email"
+                    title="Clicca per copiare l'indirizzo email">
+                    <i class="fa-solid fa-envelope" style="color: #ea4335; font-size: 1.1em;"></i>
+                    <span class="email-copy-label">martino.papa.tn@gmail.com</span>
+                    <span class="copy-badge">Copia</span>
+                </a>
+            </div>
+            <div class="demo-modal-actions">
+                <button onclick="closeDemoModal()" class="btn-secondary">Continua nella demo</button>
+                <button onclick="exitDemo()" class="add-btn">Vai al Login</button>
+            </div>
+        </article>
+    </div>
+
+    <div id="demoBanner" class="demo-banner" style="display: none;">
+        <div class="demo-banner-inner">
+            <div class="demo-banner-info">
+                <span class="demo-badge">DEMO</span>
+                <span>Stai provando la versione dimostrativa: <strong>i dati inseriti non verranno salvati</strong> alla
+                    chiusura della pagina.</span>
+            </div>
+            <div class="demo-banner-actions">
+                <button onclick="openDemoModal('upgrade')" class="demo-cta-btn">Richiedi versione definitiva</button>
+                <button onclick="exitDemo()" class="demo-login-btn">Accedi</button>
+            </div>
+        </div>
     </div>
 
     <div class="page-header-band">
@@ -162,7 +238,8 @@
                 <h4 class="footer-col-title">Assistenza</h4>
                 <a href="#" onclick="copyEmail(event, 'martino.papa.tn@gmail.com')" class="footer-link"
                     title="Clicca per copiare">
-                    <i class="fa-solid fa-envelope" aria-hidden="true"></i> martino.papa.tn@gmail.com
+                    <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                    <span class="email-copy-label">martino.papa.tn@gmail.com</span>
                 </a>
                 <a href="https://wa.me/3938885176" target="_blank" class="footer-link footer-link-whatsapp">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> +39 393 888 5176

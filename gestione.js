@@ -12,6 +12,7 @@ let turnTypes = [
 let worker_index = 0;
 let role_index = 0;
 let session = null; // Sessione Supabase (sostituisce psw)
+let isDemo = false;
 let editingRoleIndex = -1;
 let editingWorkerIndex = -1;
 
@@ -219,7 +220,8 @@ class Lavoratore {
         const article = document.createElement("article");
         article.classList.add("card");
         const ths = turnTypes.map(t => `<th>${t.name.substr(0, 3)}</th>`).join("");
-        const tableRows = Object.entries(this.disponibilita).map(([giorno, disp]) => {
+        const tableRows = GIORNI_SETTIMANA.map(giorno => {
+            const disp = (this.disponibilita && this.disponibilita[giorno]) || {};
             const tds = turnTypes.map(t => {
                 const isAvail = disp[t.name] === true;
                 return `<td class="${isAvail ? "yes" : "no"}">${isAvail ? "✓" : "✗"}</td>`;
@@ -489,7 +491,10 @@ async function login() {
         }
 
         session = data.session;
+        isDemo = false;
         document.getElementById("loginpage").style.display = "none";
+        document.getElementById("demoBanner").style.display = "none";
+        document.body.classList.remove("login-active");
         await loadAll();
 
         btn.disabled = false;
@@ -501,6 +506,137 @@ async function login() {
         btn.disabled = false;
         btn.innerText = originalText;
     }
+}
+
+// =================== MODALITÀ DEMO ===================
+
+/**
+ * Avvia la modalità demo senza credenziali, pre-caricando dati di esempio
+ * per permettere all'utente di testare subito l'interfaccia.
+ */
+function startDemo() {
+    isDemo = true;
+    session = null;
+
+    document.getElementById("loginpage").style.display = "none";
+    document.getElementById("demoBanner").style.display = "block";
+    document.body.classList.remove("login-active");
+
+    document.getElementById("Title").innerText = "Demo - Gestionale Turni";
+    document.title = "Shiftly | Modalità Demo";
+
+    // Se non ci sono già dati inseriti nella sessione demo, carica un esempio realistico
+    if (workers.length === 0 && roles.length === 0) {
+        restore({
+            turnTypes: [
+                { name: "Pranzo", start: "11:00", end: "15:00" },
+                { name: "Cena", start: "18:00", end: "23:00" }
+            ],
+            roles: [
+                {
+                    nome: "Sala",
+                    shifts: [
+                        { giorno: "Venerdì", turno: "Cena", persone: 2 },
+                        { giorno: "Sabato", turno: "Cena", persone: 3 },
+                        { giorno: "Domenica", turno: "Pranzo", persone: 2 }
+                    ]
+                },
+                {
+                    nome: "Cucina",
+                    shifts: [
+                        { giorno: "Venerdì", turno: "Cena", persone: 2 },
+                        { giorno: "Sabato", turno: "Cena", persone: 2 },
+                        { giorno: "Domenica", turno: "Pranzo", persone: 2 }
+                    ]
+                }
+            ],
+            workers: [
+                {
+                    nome: "Marco",
+                    ruoli: ["Sala"],
+                    maxOre: 30,
+                    disponibilita: {
+                        "Lunedì": { "Pranzo": true, "Cena": false },
+                        "Martedì": { "Pranzo": true, "Cena": true },
+                        "Mercoledì": { "Pranzo": false, "Cena": true },
+                        "Giovedì": { "Pranzo": true, "Cena": true },
+                        "Venerdì": { "Pranzo": true, "Cena": true },
+                        "Sabato": { "Pranzo": false, "Cena": true },
+                        "Domenica": { "Pranzo": true, "Cena": false }
+                    }
+                },
+                {
+                    nome: "Giulia",
+                    ruoli: ["Sala", "Cucina"],
+                    maxOre: 35,
+                    disponibilita: {
+                        "Lunedì": { "Pranzo": false, "Cena": true },
+                        "Martedì": { "Pranzo": true, "Cena": false },
+                        "Mercoledì": { "Pranzo": true, "Cena": true },
+                        "Giovedì": { "Pranzo": false, "Cena": true },
+                        "Venerdì": { "Pranzo": true, "Cena": true },
+                        "Sabato": { "Pranzo": true, "Cena": true },
+                        "Domenica": { "Pranzo": true, "Cena": true }
+                    }
+                }
+            ]
+        });
+    } else {
+        renderWorkers();
+        renderRoles();
+        renderCustomRuoli();
+    }
+}
+
+/**
+ * Esce dalla modalità demo, pulisce i dati temporanei e riporta al login.
+ */
+function exitDemo() {
+    isDemo = false;
+    session = null;
+    closeDemoModal();
+
+    turnTypes = [
+        { name: "Pranzo", start: "11:00", end: "15:00" },
+        { name: "Cena", start: "18:00", end: "23:00" }
+    ];
+    workers = [];
+    roles = [];
+    worker_index = 0;
+    role_index = 0;
+    renderWorkers();
+    renderRoles();
+    renderCustomRuoli();
+
+    document.getElementById("demoBanner").style.display = "none";
+    document.getElementById("loginpage").style.display = "flex";
+    document.body.classList.add("login-active");
+    document.title = "Shiftly";
+}
+
+function openDemoModal(reason = "upgrade") {
+    const badge = document.getElementById("demoModalBadge");
+    const title = document.getElementById("demoModalTitle");
+    const desc = document.getElementById("demoModalDesc");
+
+    if (reason === "generate") {
+        badge.innerText = "Funzione bloccata nella Demo";
+        badge.className = "demo-modal-badge warning";
+        title.innerText = "Generazione turni non disponibile nella Demo";
+        desc.innerText = "Nella modalità dimostrativa non è possibile generare i turni. Richiedi la versione definitiva per sbloccare l'algoritmo di generazione automatica, l'esportazione in Excel e il salvataggio nel cloud.";
+    } else {
+        badge.innerText = "Versione Definitiva";
+        badge.className = "demo-modal-badge";
+        title.innerText = "Passa alla versione definitiva";
+        desc.innerText = "Contattaci per attivare il tuo account dedicato: potrai salvare permanentemente ruoli e personale, generare automaticamente i turni della settimana ed esportarli in Excel.";
+    }
+
+    document.getElementById("demoModal").style.display = "flex";
+}
+
+function closeDemoModal() {
+    const modal = document.getElementById("demoModal");
+    if (modal) modal.style.display = "none";
 }
 
 /**
@@ -544,12 +680,43 @@ function loadLocal(input) {
 // =================== COPY EMAIL ===================
 function copyEmail(e, email) {
     e.preventDefault();
-    navigator.clipboard.writeText(email).then(() => {
-        const label = document.getElementById("emailLabel");
-        const original = label.innerText;
+    const targetEl = e.currentTarget;
+    const label = (targetEl && targetEl.querySelector(".email-copy-label"))
+        || document.getElementById("emailLabel");
+
+    const showCopiedFeedback = () => {
+        if (!label) return;
+        if (!label.dataset.originalText) {
+            label.dataset.originalText = label.innerText;
+        }
         label.innerText = "Email Copiata!";
-        setTimeout(() => { label.innerText = original; }, 1500);
-    }).catch(err => {
+        clearTimeout(label._copyTimeout);
+        label._copyTimeout = setTimeout(() => {
+            label.innerText = label.dataset.originalText;
+        }, 1500);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(email).then(showCopiedFeedback).catch(() => {
+            fallbackCopyText(email, showCopiedFeedback);
+        });
+    } else {
+        fallbackCopyText(email, showCopiedFeedback);
+    }
+}
+
+function fallbackCopyText(text, onSuccess) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand("copy");
+        if (onSuccess) onSuccess();
+    } catch (err) {
         console.error("Errore nella copia: ", err);
-    });
+    }
+    document.body.removeChild(ta);
 }

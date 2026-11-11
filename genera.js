@@ -118,6 +118,11 @@ function generaSets() {
 }
 
 async function getSchedule() {
+    if (typeof isDemo !== "undefined" && isDemo) {
+        openDemoModal("generate");
+        return;
+    }
+
     // Verifica che l'utente sia autenticato prima di procedere
     if (!session || !session.access_token) {
         alert("Sessione scaduta. Ricarica la pagina ed effettua di nuovo il login.");
