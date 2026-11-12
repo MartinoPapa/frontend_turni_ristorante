@@ -19,7 +19,8 @@
     <img src="logo.jpg" id="logo" alt="Logo" style="cursor: pointer;"
         onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
     <div class="addworker" id="addworkerpage">
-        <button class="btnClose" onclick="closeworker()"><img src="close.png" alt="X"></button>
+        <button class="btnClose" onclick="closeworker()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
         <article class="config-worker-page">
             <p>Nome</p>
             <input id="nome" type="text" placeholder="nome del lavoratore">
@@ -39,7 +40,8 @@
     </div>
 
     <div class="addworker" id="addrolepage">
-        <button class="btnClose" onclick="closerole()"><img src="close.png" alt="X"></button>
+        <button class="btnClose" onclick="closerole()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
         <article class="config-role-page">
             <p>Ruolo</p>
             <input id="roleName" type="text" placeholder="nome del ruolo">
@@ -51,7 +53,8 @@
     </div>
 
     <div class="addworker" id="turntypespage">
-        <button class="btnClose" onclick="closeTurnTypes()"><img src="close.png" alt="X"></button>
+        <button class="btnClose" onclick="closeTurnTypes()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
         <article class="config-turntypes-page">
             <h2 style="margin-bottom: 0;">Configurazione turni</h2>
             <p style="margin-top: 0.2rem;">Inserire turni e orari corrispondenti</p>
@@ -119,9 +122,9 @@
                 </div>
                 <div class="login-body">
                     <label class="login-label" for="email">Email</label>
-                    <input id="email" type="email" placeholder="email" class="login-input" autocomplete="email">
+                    <input id="email" type="email" placeholder="" class="login-input" autocomplete="email">
                     <label class="login-label" for="password">Password</label>
-                    <input id="password" type="password" placeholder="••••••••" class="login-input"
+                    <input id="password" type="password" placeholder="" class="login-input"
                         autocomplete="current-password">
                     <button onclick="login()" id="logbutton" class="btn-login">Accedi</button>
                 </div>
@@ -130,7 +133,8 @@
     </div>
 
     <div class="addworker" id="demoModal">
-        <button class="btnClose" onclick="closeDemoModal()"><img src="close.png" alt="Chiudi"></button>
+        <button class="btnClose" onclick="closeDemoModal()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
         <article class="demo-modal-card">
             <div class="demo-modal-badge" id="demoModalBadge">Modalità Demo</div>
             <h2 id="demoModalTitle">Passa alla versione definitiva</h2>
@@ -205,7 +209,8 @@
     </div>
 
     <div class="addworker" id="datiGenerati">
-        <button class="btnClose" onclick="closegenerati()"><img src="close.png" alt="Chiudi"></button>
+        <button class="btnClose" onclick="closegenerati()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
         <article style="max-width:95%;">
             <div class="generated-topbar">
                 <span class="generated-topbar-title">Turni della settimana</span>
@@ -221,6 +226,20 @@
                 </button>
             </div>
             <div id="generated"></div>
+        </article>
+    </div>
+
+    <div class="addworker" id="sendShiftsModal">
+        <button class="btnClose" onclick="closeSendShifts()" title="Chiudi"><i class="fa-solid fa-xmark"
+                aria-hidden="true"></i></button>
+        <article class="send-shifts-card">
+            <div class="send-shifts-header">
+                <h2 id="sendShiftsTitle">Invia turni</h2>
+            </div>
+            <textarea id="sendShiftsTextarea" class="send-shifts-textarea" rows="10"></textarea>
+            <button onclick="copyShiftsMessage()" id="btnCopyShiftsMsg" class="btn-save">
+                <i class="fa-regular fa-copy" aria-hidden="true"></i> Copia messaggio
+            </button>
         </article>
     </div>
     <footer class="main-footer">
