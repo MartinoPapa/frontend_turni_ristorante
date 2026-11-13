@@ -140,7 +140,11 @@ async function getSchedule() {
         "forbidden_pairs": forbiddenSet
     };
 
-    document.getElementById("btngenera").innerHTML = "Attendere...";
+    const btn = document.getElementById("btngenera");
+    const defaultBtnHtml = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Genera Turni</span>`;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i><span>Calcolo in corso...</span>`;
+
     try {
         const response = await fetch("https://backend-turni-ristorante.onrender.com/schedule", {
             method: "POST",
@@ -155,26 +159,41 @@ async function getSchedule() {
             const errData = await response.json().catch(() => ({}));
             const msg = errData.error || "Impossibile generare i turni. Errore generico.";
             alert(msg);
-            document.getElementById("btngenera").innerHTML = "Genera Turni";
+            btn.disabled = false;
+            btn.innerHTML = defaultBtnHtml;
             return;
         }
 
         let data = await response.json();
         stampa(data);
-        document.getElementById("datiGenerati").style.display = "flex";
-        document.getElementById("btngenera").innerHTML = "Genera Turni";
+        hasGeneratedSchedule = true;
+        const genSection = document.getElementById("datiGenerati");
+        genSection.style.display = "block";
+        const togglePianBtn = document.getElementById("togglePianificazioneBtn");
+        if (togglePianBtn) {
+            togglePianBtn.disabled = false;
+        }
+        if (typeof setSectionCollapsed === "function") {
+            setSectionCollapsed("sectionPianificazione", false);
+        }
+        btn.disabled = false;
+        btn.innerHTML = defaultBtnHtml;
+        setTimeout(() => {
+            genSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 60);
 
     } catch (err) {
         console.error("Error fetching schedule:", err);
         alert("Errore di connessione al server.");
-        document.getElementById("btngenera").innerHTML = "Genera Turni";
+        btn.disabled = false;
+        btn.innerHTML = defaultBtnHtml;
     }
 }
 
 let result = {};
 
 // ==========================================
-// STAMPA (LAYOUT GRIGLIA RIPRISTINATO)
+// STAMPA (LAYOUT GRIGLIA INTEGRATO)
 // ==========================================
 function stampa(data) {
     const div = document.getElementById("generated");
@@ -203,6 +222,13 @@ function stampa(data) {
         }
     }
 
+    const workerNames = Object.keys(result).filter(k => k !== "⚠ NON COPERTI");
+    const totalAssignedShifts = workerNames.reduce((acc, w) => acc + (result[w] ? result[w].length : 0), 0);
+    const summaryEl = document.getElementById("generatedSummary");
+    if (summaryEl) {
+        summaryEl.innerText = `${workerNames.length} lavorator${workerNames.length === 1 ? "e" : "i"} · ${totalAssignedShifts} turni assegnati`;
+    }
+
     // 1. GESTIONE NON COPERTI
     if (uncoveredData && uncoveredData.length > 0) {
         const aggregated = {};
@@ -221,11 +247,16 @@ function stampa(data) {
         displayList.sort((a, b) => {
             const dayDiff = daysOrder.indexOf(a.giorno) - daysOrder.indexOf(b.giorno);
             if (dayDiff !== 0) return dayDiff;
-            return a.turno.localeCompare(b.turno);
+            const idxA = turnTypes.findIndex(tt => tt.name === a.turno);
+            const idxB = turnTypes.findIndex(tt => tt.name === b.turno);
+            return idxA - idxB;
         });
 
         let alertHtml = `<div class="uncovered-alert">
-            <h3>Personale mancante:</h3>
+            <div class="uncovered-alert-header">
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <h3>Turni scoperti (personale mancante)</h3>
+            </div>
             <div class="uncovered-grid">`;
 
         for (const u of displayList) {
@@ -233,7 +264,7 @@ function stampa(data) {
                 <span class="badg-day">${u.giorno}</span>
                 <span class="badg-turn">${u.turno}</span>
                 <span class="badg-role">${u.role}</span>
-                <span class="badg-count">${u.count} Mancant${u.count === 1 ? 'e' : 'i'}</span>
+                <span class="badg-count">${u.count} mancant${u.count === 1 ? 'e' : 'i'}</span>
             </div>`;
         }
         alertHtml += `</div></div>`;
@@ -256,14 +287,21 @@ function stampa(data) {
         let oreFormattate = `${h}:${m.toString().padStart(2, '0')}`;
 
         const safeWorkerAttr = worker.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+        const initial = worker.trim().charAt(0).toUpperCase() || "?";
 
         // Creiamo la card del lavoratore
         let cardHtml = `
         <div class="worker-report-card">
             <div class="worker-header">
-                <h3>${worker}</h3>
-                <div class="worker-header-actions">
+                <div class="worker-header-info">
+                    <span class="worker-avatar">${initial}</span>
+                    <div class="worker-title-block">
+                        <h3>${worker}</h3>
+                        <span class="worker-shift-count">${workerTasks.length} turn${workerTasks.length === 1 ? "o assegnato" : "i assegnati"}</span>
+                    </div>
                     <span class="total-badge">${oreFormattate} ore</span>
+                </div>
+                <div class="worker-header-actions">
                     <button type="button" class="btn-send-shifts" data-worker="${safeWorkerAttr}" onclick="openSendShifts(this.getAttribute('data-worker'))">
                         <i class="fa-regular fa-paper-plane" aria-hidden="true"></i> Invia turni
                     </button>
@@ -274,15 +312,21 @@ function stampa(data) {
         // Iteriamo i giorni per creare le caselle
         daysOrder.forEach(day => {
             const dailyTasks = workerTasks.filter(t => t.giorno === day);
-            dailyTasks.sort((a, b) => a.turno.localeCompare(b.turno));
+            dailyTasks.sort((a, b) => {
+                const idxA = turnTypes.findIndex(tt => tt.name === a.turno);
+                const idxB = turnTypes.findIndex(tt => tt.name === b.turno);
+                return idxA - idxB;
+            });
 
             let dayContent = "";
             if (dailyTasks.length > 0) {
                 dailyTasks.forEach(t => {
+                    const tt = turnTypes.find(x => x.name === t.turno);
+                    const timeStr = tt ? `${tt.start} - ${tt.end}` : "";
                     dayContent += `<div class="shift-chip">
                         <span class="s-turn">${t.turno}</span>
                         <span class="s-role">${t.role}</span>  
-                        <span class="s-hours">${turnTypes.find(tt => tt.name === t.turno).start} - ${turnTypes.find(tt => tt.name === t.turno).end}</span>
+                        <span class="s-hours">${timeStr}</span>
                     </div>`;
                 });
                 cardHtml += `<div class="day-box active">
@@ -292,7 +336,7 @@ function stampa(data) {
             } else {
                 cardHtml += `<div class="day-box empty">
                     <div class="day-name">${day}</div>
-                    <div class="day-shifts">-</div>
+                    <div class="day-shifts"><span class="rest-label">Riposo</span></div>
                 </div>`;
             }
         });
@@ -733,4 +777,267 @@ function exportScheduleToExcel() {
 
     XLSX.utils.book_append_sheet(wb, ws, "Turni");
     XLSX.writeFile(wb, "turni_ristorante.xlsx");
+}
+
+// ==========================================
+// PDF EXPORT (STESSO CONTENUTO E COLORI DELL'EXCEL)
+// ==========================================
+function exportScheduleToPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("Errore: Libreria jsPDF non caricata.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+    const formatHoursHHMM = (hoursDec) => {
+        const totalMin = Math.round((hoursDec || 0) * 60);
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        return `${h}:${m.toString().padStart(2, "0")}`;
+    };
+
+    const getTimes = (turnName) => {
+        const tt = turnTypes.find(x => x.name === turnName);
+        return tt ? { start: tt.start, end: tt.end } : { start: "00:00", end: "00:00" };
+    };
+
+    const realWorkers = Object.keys(result).filter(k =>
+        k && k !== "⚠ NON COPERTI" && k !== "undefined" && k !== "null" && String(k).trim().length > 0
+    ).sort();
+
+    const uncoveredKey = "⚠ NON COPERTI";
+    const hasUncovered = result[uncoveredKey] && Array.isArray(result[uncoveredKey]) && result[uncoveredKey].length > 0;
+
+    // Intestazione colonne identica a Excel
+    const headRow = ["GIORNO", ...realWorkers];
+    if (hasUncovered) headRow.push("SCOPERTI");
+    headRow.push("TOTALE");
+
+    const totalCols = headRow.length;
+    const totColIdx = totalCols - 1;
+    const scopertiColIdx = hasUncovered ? totalCols - 2 : -1;
+
+    const body = [];
+    const days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+
+    const weeklyWorkerHours = {};
+    realWorkers.forEach(w => { weeklyWorkerHours[w] = 0; });
+    let grandTotalHours = 0;
+
+    // Colori coordinati con Excel
+    const COLOR_HEADER = [68, 84, 106];    // #44546A
+    const COLOR_DAY = [231, 230, 230];     // #E7E6E6
+    const COLOR_ROLE = [221, 235, 247];    // #DDEBF7
+    const COLOR_REST = [255, 242, 204];    // #FFF2CC
+    const COLOR_UNCOV = [255, 199, 206];   // #FFC7CE
+    const COLOR_UNCOV_TXT = [156, 0, 6];   // #9C0006
+    const COLOR_TOTAL = [217, 217, 217];   // #D9D9D9
+    const COLOR_GRAND = [191, 191, 191];   // #BFBFBF
+
+    days.forEach(giorno => {
+        let uncoveredGrouped = [];
+        if (hasUncovered) {
+            const raw = (result[uncoveredKey] || []).filter(t => t.giorno === giorno);
+            const map = {};
+            raw.forEach(u => {
+                const k = u.turno + "|" + u.role;
+                if (!map[k]) map[k] = { ...u, count: 0 };
+                map[k].count++;
+            });
+            uncoveredGrouped = Object.values(map).sort((a, b) => getTimes(a.turno).start.localeCompare(getTimes(b.turno).start));
+        }
+
+        let maxWorkerShifts = 0;
+        realWorkers.forEach(w => {
+            const count = (result[w] || []).filter(t => t.giorno === giorno).length;
+            if (count > maxWorkerShifts) maxWorkerShifts = count;
+        });
+
+        const rowsForWorkers = maxWorkerShifts * 3;
+        const rowsForUncovered = uncoveredGrouped.length;
+        let rowsNeeded = Math.max(rowsForWorkers, rowsForUncovered, 1);
+
+        // Creiamo la matrice di celle del giorno
+        const dayRows = Array.from({ length: rowsNeeded }, () =>
+            Array.from({ length: totalCols }, (_, cIdx) => ({
+                content: "",
+                styles: cIdx === totColIdx
+                    ? { fillColor: COLOR_TOTAL }
+                    : { fillColor: [255, 255, 255] }
+            }))
+        );
+
+        // Colonna GIORNO (unita verticalmente)
+        dayRows[0][0] = {
+            content: giorno.toUpperCase(),
+            rowSpan: rowsNeeded,
+            styles: {
+                fillColor: COLOR_DAY,
+                fontStyle: "bold",
+                halign: "center",
+                valign: "middle"
+            }
+        };
+        for (let r = 1; r < rowsNeeded; r++) {
+            dayRows[r][0] = null;
+        }
+
+        let dayTotalHours = 0;
+        const dailyWorkerHours = {};
+
+        realWorkers.forEach((w, idx) => {
+            const cIdx = idx + 1;
+            const tasks = (result[w] || []).filter(t => t.giorno === giorno);
+            tasks.sort((a, b) => getTimes(a.turno).start.localeCompare(getTimes(b.turno).start));
+
+            const wDayHours = tasks.reduce((acc, t) => acc + (t.ore || 0), 0);
+            dailyWorkerHours[w] = wDayHours;
+            weeklyWorkerHours[w] += wDayHours;
+            dayTotalHours += wDayHours;
+
+            if (tasks.length === 0) {
+                dayRows[0][cIdx] = {
+                    content: "Riposo",
+                    rowSpan: rowsNeeded,
+                    styles: {
+                        fillColor: COLOR_REST,
+                        fontStyle: "italic",
+                        textColor: [85, 85, 85],
+                        halign: "center",
+                        valign: "middle"
+                    }
+                };
+                for (let r = 1; r < rowsNeeded; r++) {
+                    dayRows[r][cIdx] = null;
+                }
+            } else {
+                tasks.forEach((task, sIdx) => {
+                    const rBase = sIdx * 3;
+                    const times = getTimes(task.turno);
+                    dayRows[rBase][cIdx] = {
+                        content: task.role,
+                        styles: {
+                            fillColor: COLOR_ROLE,
+                            fontStyle: "bold",
+                            textColor: [0, 0, 0],
+                            halign: "center",
+                            valign: "middle"
+                        }
+                    };
+                    dayRows[rBase + 1][cIdx] = {
+                        content: times.start,
+                        styles: {
+                            fillColor: [255, 255, 255],
+                            halign: "center",
+                            valign: "middle"
+                        }
+                    };
+                    dayRows[rBase + 2][cIdx] = {
+                        content: times.end,
+                        styles: {
+                            fillColor: [255, 255, 255],
+                            halign: "center",
+                            valign: "middle"
+                        }
+                    };
+                });
+            }
+        });
+
+        grandTotalHours += dayTotalHours;
+
+        if (hasUncovered && uncoveredGrouped.length > 0) {
+            uncoveredGrouped.forEach((item, index) => {
+                dayRows[index][scopertiColIdx] = {
+                    content: `${item.turno} | ${item.role} | ${item.count}`,
+                    styles: {
+                        fillColor: COLOR_UNCOV,
+                        textColor: COLOR_UNCOV_TXT,
+                        fontStyle: "bold",
+                        halign: "center",
+                        valign: "middle"
+                    }
+                };
+            });
+        }
+
+        dayRows.forEach(r => body.push(r.filter(cell => cell !== null)));
+
+        // Riga riepilogo giornaliero (TOT. GIORNO)
+        const summaryRow = Array.from({ length: totalCols }, () => ({
+            content: "",
+            styles: {
+                fillColor: COLOR_TOTAL,
+                fontStyle: "bold",
+                halign: "center",
+                valign: "middle"
+            }
+        }));
+        summaryRow[0].content = "TOT. " + giorno.substr(0, 3).toUpperCase();
+        realWorkers.forEach((w, idx) => {
+            summaryRow[idx + 1].content = formatHoursHHMM(dailyWorkerHours[w]);
+        });
+        if (hasUncovered) {
+            summaryRow[scopertiColIdx].content = "-";
+        }
+        summaryRow[totColIdx].content = formatHoursHHMM(dayTotalHours);
+        body.push(summaryRow);
+    });
+
+    // Riga TOTALE SETTIMANALE
+    const footerRow = Array.from({ length: totalCols }, () => ({
+        content: "",
+        styles: {
+            fillColor: COLOR_TOTAL,
+            fontStyle: "bold",
+            textColor: [0, 0, 0],
+            halign: "center",
+            valign: "middle"
+        }
+    }));
+    footerRow[0].content = "TOTALE";
+    realWorkers.forEach((w, idx) => {
+        footerRow[idx + 1].content = formatHoursHHMM(weeklyWorkerHours[w]);
+    });
+    if (hasUncovered) {
+        footerRow[scopertiColIdx].content = "";
+    }
+    footerRow[totColIdx] = {
+        content: formatHoursHHMM(grandTotalHours),
+        styles: {
+            fillColor: COLOR_GRAND,
+            fontStyle: "bold",
+            textColor: [0, 0, 0],
+            halign: "center",
+            valign: "middle"
+        }
+    };
+    body.push(footerRow);
+
+    doc.autoTable({
+        head: [headRow],
+        body: body,
+        theme: "grid",
+        margin: { top: 8, right: 8, bottom: 8, left: 8 },
+        styles: {
+            fontSize: 7.5,
+            cellPadding: 1.3,
+            lineColor: [180, 180, 180],
+            lineWidth: 0.15,
+            textColor: [26, 29, 35],
+            halign: "center",
+            valign: "middle"
+        },
+        headStyles: {
+            fillColor: COLOR_HEADER,
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 8.5,
+            cellPadding: 2
+        }
+    });
+
+    doc.save("turni_ristorante.pdf");
 }

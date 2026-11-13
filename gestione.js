@@ -133,6 +133,7 @@ function addTurnTypeRow() {
     renderTurnTypesEditor();
 }
 function removeTurnType(index) {
+    if (!confirm("Sicuro di voler eliminare?")) return;
     turnTypes = syncTurnTypesFromDOM();
     turnTypes.splice(index, 1);
     renderTurnTypesEditor();
@@ -229,15 +230,19 @@ class Lavoratore {
             return `<tr><td>${giorno.substr(0, 3)}</td>${tds}</tr>`;
         }).join("");
 
+        const roleTags = this.ruoli.map(r => `<span class="worker-role-tag">${r}</span>`).join("");
+
         article.innerHTML = `
-          <h4>${this.nome}</h4>
-          <h6>${this.ruoli.join(", ")}</h6>
+          <div class="card-top-row">
+            <h4>${this.nome}</h4>
+            <span class="worker-hours-pill">${this.maxOre}h/sett</span>
+          </div>
+          <div class="worker-role-tags">${roleTags}</div>
           <h5>Disponibilità</h5>
-          <div style="overflow-x:auto; width:100%">
+          <div class="card-table-wrap">
             <table class="schedule-table"><thead><tr><th></th>${ths}</tr></thead><tbody>${tableRows}</tbody></table>
           </div>
-          <div class="meta">${this.maxOre}h/settimana</div>
-          <div class="trebottoni" style="margin-top:10px">
+          <div class="trebottoni">
             <button onclick="editWorker(${this.index})">Modifica</button>
             <button onclick="eliminaLavoratore(${this.index})">Elimina</button>
           </div>
@@ -259,14 +264,18 @@ class Ruolo {
         const article = document.createElement("div");
         article.classList.add("ruolo");
         const shiftRows = this.shifts.map(s => {
-            return `<tr><td>${s.giorno}</td><td>${s.turno}</td><td>${s.persone}</td></tr>`;
+            return `<tr><td>${s.giorno}</td><td><span class="shift-turn-tag">${s.turno}</span></td><td><span class="pers-badge">${s.persone}</span></td></tr>`;
         }).join("");
         article.innerHTML = `
-          <h4>${this.nome}</h4>
-          <table class="shift-table">
-            <thead><tr><th>Giorno</th><th>Turno</th><th>Pers</th></tr></thead>
-            <tbody>${shiftRows}</tbody>
-          </table>
+          <div class="card-top-row">
+            <h4>${this.nome}</h4>
+          </div>
+          <div class="card-table-wrap">
+            <table class="shift-table">
+              <thead><tr><th>Giorno</th><th>Turno</th><th>Pers.</th></tr></thead>
+              <tbody>${shiftRows}</tbody>
+            </table>
+          </div>
           <div class="trebottoni">
             <button onclick="editRole(${this.index})">Modifica</button>
             <button onclick="duplicateRole(${this.index})" class="btn-duplicate">Duplica</button>
@@ -323,6 +332,12 @@ function renderAvailabilityTable(currentData = {}) {
     });
 }
 
+function selezionaTuttiTurni() {
+    document.querySelectorAll("#scheduleTable input[type=checkbox]").forEach(c => {
+        c.checked = true;
+    });
+}
+
 function openworker() {
     editingWorkerIndex = -1;
     document.getElementById("addworkerpage").style.display = "flex";
@@ -368,7 +383,10 @@ function aggiungiEChiudi() {
         if (workers.some(w => w.nome.toLowerCase() === nome.toLowerCase())) return alert("Nome esistente.");
         workers.push(newW);
     }
-    closeworker(); renderWorkers(); storeAll();
+    closeworker();
+    setSectionCollapsed("sectionPersonale", false);
+    renderWorkers();
+    storeAll();
 }
 
 function editWorker(i) {
@@ -381,8 +399,21 @@ function editWorker(i) {
     renderCustomRuoli(w.ruoli);
     renderAvailabilityTable(w.disponibilita);
 }
-function eliminaLavoratore(i) { workers = workers.filter(w => w.index !== i); renderWorkers(); storeAll(); }
-function renderWorkers() { document.getElementById("track").innerHTML = ""; workers.forEach(w => document.getElementById("track").appendChild(w.generaCard())); }
+function eliminaLavoratore(i) {
+    if (!confirm("Sicuro di voler eliminare?")) return;
+    workers = workers.filter(w => w.index !== i);
+    renderWorkers();
+    storeAll();
+}
+function renderWorkers() {
+    const track = document.getElementById("track");
+    track.innerHTML = "";
+    if (workers.length === 0) {
+        track.innerHTML = `<div class="empty-state-box">Nessun lavoratore inserito. Clicca su <strong>+ Personale</strong> per aggiungere il tuo team.</div>`;
+        return;
+    }
+    workers.forEach(w => track.appendChild(w.generaCard()));
+}
 
 // =================== ROLE UI ===================
 function openrole() { editingRoleIndex = -1; document.getElementById("addrolepage").style.display = "flex"; document.getElementById("roleName").value = ""; document.getElementById("roleShiftsContainer").innerHTML = ""; addShiftRow(); }
@@ -434,6 +465,7 @@ function aggiungiRuoloEChiudi() {
     }
 
     closerole();
+    setSectionCollapsed("sectionRuoli", false);
     renderRoles();
     renderWorkers();
     renderCustomRuoli();
@@ -455,8 +487,22 @@ function duplicateRole(i) {
     document.getElementById("roleShiftsContainer").innerHTML = "";
     r.shifts.forEach(s => addShiftRow(s));
 }
-function eliminaRuolo(i) { roles = roles.filter(r => r.index !== i); renderRoles(); renderCustomRuoli(); storeAll(); }
-function renderRoles() { document.getElementById("ruoliWrapper").innerHTML = ""; roles.forEach(r => document.getElementById("ruoliWrapper").appendChild(r.generaCard())); }
+function eliminaRuolo(i) {
+    if (!confirm("Sicuro di voler eliminare?")) return;
+    roles = roles.filter(r => r.index !== i);
+    renderRoles();
+    renderCustomRuoli();
+    storeAll();
+}
+function renderRoles() {
+    const wrap = document.getElementById("ruoliWrapper");
+    wrap.innerHTML = "";
+    if (roles.length === 0) {
+        wrap.innerHTML = `<div class="empty-state-box">Nessun ruolo configurato. Clicca su <strong>+ Ruolo</strong> per definire i turni richiesti.</div>`;
+        return;
+    }
+    roles.forEach(r => wrap.appendChild(r.generaCard()));
+}
 
 // =================== AUTH (SUPABASE) ===================
 
@@ -520,6 +566,7 @@ function startDemo() {
 
     document.getElementById("loginpage").style.display = "none";
     document.getElementById("demoBanner").style.display = "block";
+    document.body.classList.remove("login-active");
     document.body.classList.remove("login-active");
 
     document.getElementById("Title").innerText = "Demo - Gestionale Turni";
@@ -608,6 +655,15 @@ function exitDemo() {
     renderRoles();
     renderCustomRuoli();
 
+    const genEl = document.getElementById("datiGenerati");
+    if (genEl) genEl.style.display = "none";
+    hasGeneratedSchedule = false;
+    setSectionCollapsed("sectionPianificazione", true);
+    const togglePianBtn = document.getElementById("togglePianificazioneBtn");
+    if (togglePianBtn) {
+        togglePianBtn.disabled = true;
+        togglePianBtn.title = "Genera prima i turni per espandere";
+    }
     document.getElementById("demoBanner").style.display = "none";
     document.getElementById("loginpage").style.display = "flex";
     document.body.classList.add("login-active");
@@ -623,12 +679,12 @@ function openDemoModal(reason = "upgrade") {
         badge.innerText = "Funzione bloccata nella Demo";
         badge.className = "demo-modal-badge warning";
         title.innerText = "Generazione turni non disponibile nella Demo";
-        desc.innerText = "Nella modalità dimostrativa non è possibile generare i turni. Richiedi la versione definitiva per sbloccare l'algoritmo di generazione automatica, l'esportazione in Excel e il salvataggio nel cloud.";
+        desc.innerText = "Nella modalità dimostrativa non è possibile generare i turni. Richiedi la versione definitiva per sbloccare l'algoritmo di generazione automatica, l'esportazione in Excel o Pdf e il salvataggio nel cloud.";
     } else {
         badge.innerText = "Versione Definitiva";
         badge.className = "demo-modal-badge";
         title.innerText = "Passa alla versione definitiva";
-        desc.innerText = "Contattaci per attivare il tuo account dedicato: potrai salvare permanentemente ruoli e personale, generare automaticamente i turni della settimana ed esportarli in Excel.";
+        desc.innerText = "Contattaci per attivare il tuo account dedicato: potrai salvare permanentemente ruoli e personale, generare automaticamente i turni della settimana ed esportarli in Excel o Pdf.";
     }
 
     document.getElementById("demoModal").style.display = "flex";
@@ -719,4 +775,72 @@ function fallbackCopyText(text, onSuccess) {
         console.error("Errore nella copia: ", err);
     }
     document.body.removeChild(ta);
+}
+
+// =================== INVIO DA TASTIERA (LOGIN E MODALI) ===================
+document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    if (e.target && e.target.tagName === "TEXTAREA") return;
+
+    const workerModal = document.getElementById("addworkerpage");
+    if (workerModal && getComputedStyle(workerModal).display !== "none") {
+        e.preventDefault();
+        aggiungiEChiudi();
+        return;
+    }
+
+    const roleModal = document.getElementById("addrolepage");
+    if (roleModal && getComputedStyle(roleModal).display !== "none") {
+        e.preventDefault();
+        aggiungiRuoloEChiudi();
+        return;
+    }
+
+    const turnTypesModal = document.getElementById("turntypespage");
+    if (turnTypesModal && getComputedStyle(turnTypesModal).display !== "none") {
+        e.preventDefault();
+        saveTurnTypesAndClose();
+        return;
+    }
+
+    const demoModal = document.getElementById("demoModal");
+    if (demoModal && getComputedStyle(demoModal).display !== "none") {
+        return;
+    }
+
+    const loginPage = document.getElementById("loginpage");
+    if (loginPage && getComputedStyle(loginPage).display !== "none") {
+        const logBtn = document.getElementById("logbutton");
+        if (logBtn && !logBtn.disabled) {
+            e.preventDefault();
+            login();
+        }
+    }
+});
+
+// =================== COMPRESSIONE / ESPANSIONE SEZIONI ===================
+let hasGeneratedSchedule = false;
+
+function toggleSection(sectionId) {
+    if (sectionId === "sectionPianificazione" && !hasGeneratedSchedule) {
+        return;
+    }
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    const isCollapsed = section.classList.toggle("is-collapsed");
+    updateSectionToggleBtn(section, isCollapsed);
+}
+
+function setSectionCollapsed(sectionId, collapsed) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.classList.toggle("is-collapsed", collapsed);
+    updateSectionToggleBtn(section, collapsed);
+}
+
+function updateSectionToggleBtn(section, isCollapsed) {
+    const btn = section.querySelector(".section-toggle-btn");
+    if (!btn) return;
+    btn.setAttribute("aria-expanded", String(!isCollapsed));
+    btn.title = isCollapsed ? "Espandi sezione" : "Comprimi sezione";
 }

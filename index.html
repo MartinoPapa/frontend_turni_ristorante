@@ -12,12 +12,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 
 <body class="login-active">
-    <img src="logo.jpg" id="logo" alt="Logo" style="cursor: pointer;"
-        onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
     <div class="addworker" id="addworkerpage">
         <button class="btnClose" onclick="closeworker()" title="Chiudi"><i class="fa-solid fa-xmark"
                 aria-hidden="true"></i></button>
@@ -26,7 +26,12 @@
             <input id="nome" type="text" placeholder="nome del lavoratore">
             <p>Ruoli</p>
             <div id="ruoloSelectContainer"></div>
-            <p>Disponibilità</p>
+            <div class="availability-header-row">
+                <p>Disponibilità</p>
+                <button type="button" onclick="selezionaTuttiTurni()" class="btn-select-all">
+                    <i class="fa-solid fa-check-double" aria-hidden="true"></i> Seleziona tutte
+                </button>
+            </div>
             <div style="overflow-x:auto">
                 <table class="schedule-table" id="scheduleTable">
                     <thead></thead>
@@ -56,10 +61,9 @@
         <button class="btnClose" onclick="closeTurnTypes()" title="Chiudi"><i class="fa-solid fa-xmark"
                 aria-hidden="true"></i></button>
         <article class="config-turntypes-page">
-            <h2 style="margin-bottom: 0;">Configurazione turni</h2>
-            <p style="margin-top: 0.2rem;">Inserire turni e orari corrispondenti</p>
+            <p>Turni e Orari</p>
             <div id="turnTypesList"></div>
-            <button onclick="addTurnTypeRow()" class="btn-centered-small">+ Aggiungi Tipologia</button>
+            <button onclick="addTurnTypeRow()" class="btn-centered-small">+ Aggiungi</button>
             <button onclick="saveTurnTypesAndClose()" class="btn-save">SALVA</button>
         </article>
     </div>
@@ -181,53 +185,98 @@
         </div>
     </div>
 
-    <div class="container">
-        <div class="section-header">
-            <h2>Ruoli e Turni</h2>
-            <div>
-                <button class="add-btn" onclick="openTurnTypes()">⚙ Turni</button>
-                <button class="add-btn" onclick="openrole()">+ Ruolo</button>
+    <main class="workspace-main">
+        <section class="workspace-section" id="sectionRuoli">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <h2>Ruoli e Turni</h2>
+                    <p class="section-subtitle">Configura le fasce orarie e il personale richiesto per ciascun ruolo</p>
+                </div>
+                <div class="section-actions">
+                    <button class="add-btn" onclick="openTurnTypes()">
+                        <i class="fa-solid fa-clock" aria-hidden="true"></i> Orari Turni
+                    </button>
+                    <button class="add-btn" onclick="openrole()">
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i> Ruolo
+                    </button>
+                    <button type="button" class="section-toggle-btn" onclick="toggleSection('sectionRuoli')"
+                        aria-expanded="true" title="Comprimi sezione">
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="ruoli-wrapper" id="ruoliWrapper"></div>
+            <div class="ruoli-wrapper" id="ruoliWrapper"></div>
+        </section>
 
-    <div class="container">
-        <div class="section-header">
-            <h2>Personale</h2>
-            <button class="add-btn" onclick="openworker()">+ Personale</button>
-        </div>
-    </div>
-    <div class="slider-wrap">
-        <div class="slider-viewport">
-            <div class="slider-track" id="track"></div>
-        </div>
-    </div>
-
-    <div class="genera">
-        <button onclick="getSchedule()" id="btngenera">Genera Turni</button>
-    </div>
-
-    <div class="addworker" id="datiGenerati">
-        <button class="btnClose" onclick="closegenerati()" title="Chiudi"><i class="fa-solid fa-xmark"
-                aria-hidden="true"></i></button>
-        <article style="max-width:95%;">
-            <div class="generated-topbar">
-                <span class="generated-topbar-title">Turni della settimana</span>
-                <button onclick="exportScheduleToExcel()" class="excel-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                        aria-hidden="true">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    File Excel
-                </button>
+        <section class="workspace-section" id="sectionPersonale">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <h2>Personale</h2>
+                    <p class="section-subtitle">Gestisci i lavoratori, le mansioni assegnate e le disponibilità</p>
+                </div>
+                <div class="section-actions">
+                    <button class="add-btn" onclick="openworker()">
+                        <i class="fa-solid fa-user-plus" aria-hidden="true"></i> Personale
+                    </button>
+                    <button type="button" class="section-toggle-btn" onclick="toggleSection('sectionPersonale')"
+                        aria-expanded="true" title="Comprimi sezione">
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
-            <div id="generated"></div>
-        </article>
-    </div>
+            <div class="slider-wrap">
+                <div class="slider-viewport">
+                    <div class="slider-track" id="track"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="workspace-section schedule-hub is-collapsed" id="sectionPianificazione">
+            <div class="generator-bar">
+                <div class="generator-bar-info">
+                    <div class="generator-icon">
+                        <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h2>Pianificazione Settimanale</h2>
+                        <p class="section-subtitle">Calcola la distribuzione ottimale dei turni in base a ruoli, monte
+                            ore e disponibilità</p>
+                    </div>
+                </div>
+                <div class="generator-bar-actions">
+                    <button onclick="getSchedule()" id="btngenera">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                        <span>Genera Turni</span>
+                    </button>
+                    <button type="button" class="section-toggle-btn" id="togglePianificazioneBtn"
+                        onclick="toggleSection('sectionPianificazione')" aria-expanded="false"
+                        title="Genera prima i turni per espandere" disabled>
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="generated-section" id="datiGenerati" style="display: none;">
+                <div class="generated-topbar">
+                    <div class="generated-topbar-left">
+                        <span class="generated-topbar-title">Turni della settimana</span>
+                        <span class="generated-summary-badge" id="generatedSummary"></span>
+                    </div>
+                    <div class="generated-topbar-actions">
+                        <button onclick="exportScheduleToExcel()" class="excel-btn">
+                            <i class="fa-solid fa-file-excel" aria-hidden="true"></i>
+                            Scarica Excel
+                        </button>
+                        <button onclick="exportScheduleToPDF()" class="pdf-btn">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            Scarica PDF
+                        </button>
+                    </div>
+                </div>
+                <div id="generated"></div>
+            </div>
+        </section>
+    </main>
 
     <div class="addworker" id="sendShiftsModal">
         <button class="btnClose" onclick="closeSendShifts()" title="Chiudi"><i class="fa-solid fa-xmark"
