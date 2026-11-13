@@ -217,6 +217,7 @@ h1 {
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   gap: 1rem;
+  cursor: pointer;
 }
 
 .section-title-group {
@@ -283,6 +284,10 @@ h1 {
 
 .workspace-section.is-collapsed .section-header {
   border-bottom-color: transparent;
+}
+
+#sectionPianificazione.can-expand .generator-bar {
+  cursor: pointer;
 }
 
 .workspace-section.is-collapsed .section-toggle-btn i {
@@ -648,16 +653,8 @@ button:focus-visible {
 }
 
 .pers-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: var(--radius-pill);
-  background: var(--brand-light);
-  color: var(--brand);
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-primary);
   font-size: var(--text-xs);
 }
 

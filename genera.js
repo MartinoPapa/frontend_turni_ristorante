@@ -167,6 +167,8 @@ async function getSchedule() {
         let data = await response.json();
         stampa(data);
         hasGeneratedSchedule = true;
+        const pianSection = document.getElementById("sectionPianificazione");
+        if (pianSection) pianSection.classList.add("can-expand");
         const genSection = document.getElementById("datiGenerati");
         genSection.style.display = "block";
         const togglePianBtn = document.getElementById("togglePianificazioneBtn");

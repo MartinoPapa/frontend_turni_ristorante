@@ -658,6 +658,8 @@ function exitDemo() {
     const genEl = document.getElementById("datiGenerati");
     if (genEl) genEl.style.display = "none";
     hasGeneratedSchedule = false;
+    const pianSection = document.getElementById("sectionPianificazione");
+    if (pianSection) pianSection.classList.remove("can-expand");
     setSectionCollapsed("sectionPianificazione", true);
     const togglePianBtn = document.getElementById("togglePianificazioneBtn");
     if (togglePianBtn) {
@@ -820,6 +822,11 @@ document.addEventListener("keydown", (e) => {
 
 // =================== COMPRESSIONE / ESPANSIONE SEZIONI ===================
 let hasGeneratedSchedule = false;
+
+function handleHeaderBarClick(e, sectionId) {
+    if (e.target && e.target.closest("button")) return;
+    toggleSection(sectionId);
+}
 
 function toggleSection(sectionId) {
     if (sectionId === "sectionPianificazione" && !hasGeneratedSchedule) {

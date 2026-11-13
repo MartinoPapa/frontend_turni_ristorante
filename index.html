@@ -75,7 +75,7 @@
                     <h1>Shift<span style="color:var(--amber)">ly</span></h1>
                     <p class="app-desc">
                         Gestisci i turni del tuo personale in modo semplice e intelligente.
-                        Organizza gli orari e ottimizza la produttività del tuo ristorante.
+                        Organizza gli orari e ottimizza la produttività della tua azienda.
                     </p>
                 </div>
 
@@ -187,7 +187,7 @@
 
     <main class="workspace-main">
         <section class="workspace-section" id="sectionRuoli">
-            <div class="section-header">
+            <div class="section-header" onclick="handleHeaderBarClick(event, 'sectionRuoli')">
                 <div class="section-title-group">
                     <h2>Ruoli e Turni</h2>
                     <p class="section-subtitle">Configura le fasce orarie e il personale richiesto per ciascun ruolo</p>
@@ -209,7 +209,7 @@
         </section>
 
         <section class="workspace-section" id="sectionPersonale">
-            <div class="section-header">
+            <div class="section-header" onclick="handleHeaderBarClick(event, 'sectionPersonale')">
                 <div class="section-title-group">
                     <h2>Personale</h2>
                     <p class="section-subtitle">Gestisci i lavoratori, le mansioni assegnate e le disponibilità</p>
@@ -232,7 +232,7 @@
         </section>
 
         <section class="workspace-section schedule-hub is-collapsed" id="sectionPianificazione">
-            <div class="generator-bar">
+            <div class="generator-bar" onclick="handleHeaderBarClick(event, 'sectionPianificazione')">
                 <div class="generator-bar-info">
                     <div class="generator-icon">
                         <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
